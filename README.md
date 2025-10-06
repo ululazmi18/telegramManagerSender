@@ -39,6 +39,30 @@ bash start-backend.sh
 bash start-frontend.sh
 ```
 
+## Akses Aplikasi Web
+
+Setelah semua service berjalan, buka aplikasi di browser:
+
+**Akses Lokal (di HP Termux):**
+
+```
+http://localhost:3001
+```
+
+****Akses Jaringan Lokal** dalam LAN/Wi-Fi yang sama):**
+
+```
+http://[IP_TERMUX]:3001
+```
+
+Untuk cek IP Termux, jalankan:
+
+```bash
+ifconfig | grep inet
+```
+
+Contoh: `http://192.168.1.5:3001`
+
 ## Teknologi
 
 - React.js + Bootstrap
