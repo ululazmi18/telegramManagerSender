@@ -19,6 +19,14 @@ pkg install -y python nodejs-lts redis make clang openssh iproute2 net-tools cur
 echo ""
 echo "🐍 Step 2: Install Python dependencies..."
 cd "$BASEDIR/python-service"
+
+# Buat dan aktifkan virtualenv
+if [ ! -d "venv" ]; then
+    echo "Membuat virtual environment..."
+    python -m venv venv
+fi
+. "venv/bin/activate"
+
 pip install --upgrade pip
 
 # Uninstall package lama yang conflict
@@ -49,6 +57,9 @@ else
         echo "✅ Flask activated"
     fi
 fi
+
+# Nonaktifkan venv setelah selesai step Python
+deactivate 2>/dev/null || true
 
 # 3. Install dependencies Node.js Backend
 echo ""
