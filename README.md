@@ -51,14 +51,14 @@ http://localhost:3001
 
 ****Akses Jaringan Lokal** dalam LAN/Wi-Fi yang sama):**
 
-```
-http://[IP_TERMUX]:3001
-```
-
 Untuk cek IP Termux, jalankan:
 
 ```bash
-ifconfig | grep inet
+ip addr show wlan0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
+```
+
+```
+http://[IP_TERMUX]:3001
 ```
 
 Contoh: `http://192.168.1.5:3001`
