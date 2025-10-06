@@ -1,0 +1,17 @@
+# Gunakan versi yang kompatibel dengan Termux
+# Untuk Termux, beberapa package perlu versi spesifik yang tidak memerlukan kompilasi Rust
+
+# Option 1: Dengan pydantic v1 (lebih stabil di Termux)
+fastapi==0.100.0
+uvicorn==0.23.0
+pydantic==1.10.13
+pyrogram==2.0.106
+
+# Option 2 (jika option 1 gagal): Versi minimal
+# fastapi
+# uvicorn
+# pyrogram
+
+# TgCrypto opsional (untuk performa, tapi sering gagal compile di Termux)
+# Uncomment jika berhasil compile:
+# tgcrypto==1.2.5
