@@ -6,7 +6,8 @@ Aplikasi untuk mengelola kampanye pesan Telegram dengan antarmuka web di Termux.
 
 ```bash
 git clone https://github.com/ululazmi18/telegramManagerSender.git
-cd telegramManagerSender 
+cd telegramManagerSender
+pkg install bash
 bash setup.sh
 ```
 
