@@ -18,7 +18,7 @@ Script akan install semua dependencies dan setup Redis.
 
 ## Menjalankan Service
 
-**⚠️ PENTING: Jalankan Redis terlebih dahulu!**
+**⚠️ PENTING: Jalankan Redis terlebih dahulu! dan abaikan errornya**
 
 Buka 4 terminal terpisah, masuk ke folder project, lalu jalankan **BERURUTAN**:
 
