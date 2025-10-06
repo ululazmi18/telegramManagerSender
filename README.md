@@ -5,6 +5,7 @@ Aplikasi untuk mengelola kampanye pesan Telegram dengan antarmuka web di Termux.
 ## Setup Cepat
 
 ```bash
+chmod +x setup.sh
 bash setup.sh
 ```
 
@@ -20,22 +21,26 @@ Buka 4 terminal terpisah, masuk ke folder project, lalu jalankan **BERURUTAN**:
 
 **Terminal 1 - Redis**
 ```bash
+chmod +x start-redis.sh
 bash start-redis.sh
 ```
 Tunggu tampil "Ready to accept connections"
 
 **Terminal 2 - Python Service**
 ```bash
+chmod +x start-python.sh
 bash start-python.sh
 ```
 
 **Terminal 3 - Backend**
 ```bash
+chmod +x start-backend.sh
 bash start-backend.sh
 ```
 
 **Terminal 4 - Frontend**
 ```bash
+chmod +x start-frontend.sh
 bash start-frontend.sh
 ```
 
