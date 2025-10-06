@@ -12,8 +12,8 @@ echo "================================================"
 # 1. Install paket Termux yang diperlukan
 echo ""
 echo "📦 Step 1: Install Termux packages..."
-pkg update -y
-pkg install -y python nodejs-lts redis make clang
+pkg update -y & pkg upgrade -y
+pkg install -y python nodejs-lts redis make clang openssh iproute2 net-tools curl tar bash gzip ldd wget which git
 
 # 2. Install dependencies Python
 echo ""
