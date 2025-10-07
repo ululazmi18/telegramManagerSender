@@ -1,76 +1,154 @@
 # Telegram Campaign Manager
 
-Aplikasi untuk mengelola kampanye pesan Telegram dengan antarmuka web di Termux.
+Aplikasi untuk mengelola kampanye pesan Telegram dengan antarmuka web yang modern.
 
-## Setup Cepat
+## 🚀 Quick Start
+
+Pilih panduan setup sesuai platform Anda:
+
+### 📱 Untuk Termux (Android)
+
+**Setup dengan Screen (Recommended):**
+```bash
+bash setup-screen-termux.sh
+```
+
+📖 **[Baca Panduan Lengkap Termux →](README-SCREEN-TERMUX.md)**
+
+---
+
+### 💻 Untuk Linux (Ubuntu/Debian)
+
+**Setup dengan Screen (Recommended):**
+```bash
+bash setup-screen-linux.sh
+```
+
+📖 **[Baca Panduan Lengkap Linux →](README-SCREEN-LINUX.md)**
+
+---
+
+## 📚 Dokumentasi
+
+- **[README-SCREEN-TERMUX.md](README-SCREEN-TERMUX.md)** - Panduan lengkap untuk Termux dengan auto-start menggunakan screen
+- **[README-SCREEN-LINUX.md](README-SCREEN-LINUX.md)** - Panduan lengkap untuk Linux dengan auto-start menggunakan screen
+
+## ✨ Fitur Utama
+
+- ✅ **One-Command Setup** - Install dan jalankan semua dengan 1 perintah
+- ✅ **Auto-Start Services** - Semua service otomatis jalan di background menggunakan screen
+- ✅ **Easy Management** - Script untuk start/stop/restart/status semua service
+- ✅ **Multi-Platform** - Support Termux (Android) dan Linux
+- ✅ **Modern UI** - Interface web yang responsive dan user-friendly
+- ✅ **Campaign Management** - Kelola kampanye pesan Telegram dengan mudah
+
+## 🛠️ Teknologi
+
+- **Frontend:** React.js + Bootstrap
+- **Backend:** Node.js + Express
+- **Python Service:** FastAPI/Flask + Pyrogram
+- **Database:** SQLite
+- **Queue:** Redis + BullMQ
+- **Process Manager:** Screen
+
+## 🎯 Manajemen Service
+
+Setelah setup, gunakan script `manage-services.sh`:
 
 ```bash
-pkg install git -y 
-git clone https://github.com/ululazmi18/telegramManagerSender.git 
-cd telegramManagerSender 
-pkg install bash -y 
-bash setup.sh 
+# Start semua service
+bash manage-services.sh start
+
+# Stop semua service
+bash manage-services.sh stop
+
+# Restart semua service
+bash manage-services.sh restart
+
+# Cek status service
+bash manage-services.sh status
+
+# Lihat logs
+bash manage-services.sh logs
 ```
 
-Script akan install semua dependencies dan setup Redis.
-- Otomatis gunakan Pydantic v2 (Python 3.12 compatible)
-- Fallback ke Flask jika FastAPI gagal install
+## 🌐 Akses Aplikasi
 
-## Menjalankan Service
+Setelah service berjalan:
 
-**⚠️ PENTING: Jalankan Redis terlebih dahulu! dan abaikan errornya**
+**Lokal:**
+```
+http://localhost:3001
+```
 
-Buka 4 terminal terpisah, masuk ke folder project, lalu jalankan **BERURUTAN**:
+**Dari jaringan lain:**
+```
+http://[IP_ADDRESS]:3001
+```
 
-**Terminal 1 - Redis**
+## 📋 Requirements
+
+### Termux
+- Termux dari F-Droid (bukan Google Play Store)
+- Storage permission
+- Koneksi internet
+
+### Linux
+- Linux dengan apt package manager
+- User dengan sudo privileges
+- Koneksi internet
+
+## 🔧 Troubleshooting
+
+Jika ada masalah, lihat dokumentasi lengkap:
+- [Troubleshooting Termux](README-SCREEN-TERMUX.md#-troubleshooting)
+- [Troubleshooting Linux](README-SCREEN-LINUX.md#-troubleshooting)
+
+Atau cek status service:
 ```bash
-bash start-redis.sh 
-```
-Tunggu tampil "Ready to accept connections"
-
-**Terminal 2 - Python Service**
-```bash
-bash start-python.sh 
+bash manage-services.sh status
+bash manage-services.sh logs
 ```
 
-**Terminal 3 - Backend**
-```bash
-bash start-backend.sh 
-```
-
-**Terminal 4 - Frontend**
-```bash
-bash start-frontend.sh 
-```
-
-## Akses Aplikasi Web
-
-Setelah semua service berjalan, buka aplikasi di browser:
-
-**Akses Lokal (di HP Termux):**
+## 📊 Service Architecture
 
 ```
-http://localhost:3001 
+┌─────────────────────────────────────────┐
+│         Frontend (React)                │
+│         Port: 3001                      │
+└──────────────┬──────────────────────────┘
+               │
+┌──────────────▼──────────────────────────┐
+│         Backend (Node.js)               │
+│         Port: 3000                      │
+└──────┬───────────────────────┬──────────┘
+       │                       │
+┌──────▼──────────┐   ┌────────▼─────────┐
+│ Python Service  │   │      Redis       │
+│ Port: 8000      │   │   Port: 6379     │
+└─────────────────┘   └──────────────────┘
 ```
 
-****Akses Jaringan Lokal** dalam LAN/Wi-Fi yang sama):**
+## 🤝 Contributing
 
-Untuk cek IP Termux, jalankan:
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-```bash
-ip addr show wlan0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1 
-```
+## 📄 License
 
-```
-http://[IP_TERMUX]:3001 
-```
+MIT License
 
-Contoh: `http://192.168.1.5:3001`
+## 🔗 Links
 
-## Teknologi
+- **Repository:** https://github.com/ululazmi18/telegramManagerSender
+- **Issues:** https://github.com/ululazmi18/telegramManagerSender/issues
 
-- React.js + Bootstrap
-- Node.js + Express
-- FastAPI/Flask + Pyrogram
-- SQLite + Redis + BullMQ
-# telegramManagerSender
+## 📞 Support
+
+Jika ada pertanyaan atau masalah:
+1. Cek dokumentasi yang sesuai (Termux/Linux)
+2. Lihat troubleshooting guide
+3. Buka issue di GitHub
+
+---
+
+**Made with ❤️ for Telegram Campaign Management**
