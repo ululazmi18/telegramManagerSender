@@ -5,7 +5,7 @@ Panduan setup lengkap dengan auto-start semua service menggunakan screen.
 ## 🚀 Quick Setup (One Command)
 
 ```bash
-bash setup-ubuntu-server.sh
+bash setup-screen-linux.sh
 ```
 
 Script ini akan:
@@ -18,7 +18,7 @@ Setelah selesai, aplikasi langsung bisa diakses!
 
 ## 📋 Requirements
 
-- Linux dengan apt package manager (Debian/Ubuntu based)
+- Linux dengan apt package manager
 - User dengan sudo privileges
 - Koneksi internet
 
