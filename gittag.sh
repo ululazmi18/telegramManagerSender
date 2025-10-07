@@ -1,6 +1,53 @@
 #!/bin/bash
 
-# Script untuk membuat tag versi dan langsung melakukan push tag.
+# Script ini melakukan:
+# 1. Add dan Commit semua perubahan lokal.
+# 2. Push branch saat ini ke remote.
+# 3. Membuat/Mengganti Tag versi.
+# 4. Push Tag versi ke remote.
+
+# --- 1. Persiapan Commit & Push Branch ---
+
+# Minta input pesan commit
+read -p "Masukkan pesan commit untuk perubahan ini: " commit_message
+
+# Cek kalau pesan commit kosong
+if [ -z "$commit_message" ]
+then
+  echo "⚠️  Pesan commit tidak boleh kosong."
+  exit 1
+fi
+
+# Tambahkan semua perubahan
+echo "➕ Menambahkan semua perubahan (git add .)..."
+git add .
+
+# Commit dengan pesan yang diberikan user
+echo "📦 Melakukan commit..."
+git commit -m "$commit_message"
+
+# Cek status commit
+if [ $? -ne 0 ]; then
+  echo "❌ Error saat commit. Periksa apakah ada yang perlu di-commit."
+  exit 1
+fi
+
+# Push branch (asumsi branch saat ini adalah yang ingin di-push)
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+echo "🚀 Push branch '$CURRENT_BRANCH' ke remote..."
+git push origin "$CURRENT_BRANCH"
+
+# Cek status push branch
+if [ $? -ne 0 ]; then
+  echo "❌ Error saat push branch. Periksa koneksi atau hak akses Anda."
+  exit 1
+fi
+
+echo "✅ Branch '$CURRENT_BRANCH' berhasil didorong (pushed) ke remote."
+echo "-------------------------------------"
+
+
+# --- 2. Proses Tagging & Push Tag ---
 
 # Minta input versi tag
 read -p "Masukkan versi tag baru (misal: v1.0.0): " tag_version
@@ -12,16 +59,22 @@ then
   exit 1
 fi
 
+# Tanya apakah tag yang sudah ada ingin diganti (overwrite)
+read -p "Apakah Anda ingin MENGGANTI tag yang sudah ada (overwrite)? (y/N) [N]: " force_tag
+force_tag=${force_tag,,} # Ubah ke huruf kecil
+
+FORCE_FLAG=""
+if [[ "$force_tag" == "y" ]]; then
+  FORCE_FLAG="-f"
+  echo "⚠️  Mode overwrite (force) diaktifkan."
+fi
+
 # Tanya apakah ini untuk rilis (membutuhkan tag anotasi)
 read -p "Apakah tag ini untuk RILIS dan butuh pesan (y/N)? [N]: " is_release
-
-# Ubah input menjadi huruf kecil
-is_release=${is_release,,}
-
-# --- Proses Tagging ---
+is_release=${is_release,,} # Ubah ke huruf kecil
 
 # Default: Tag Ringan (Lightweight Tag)
-TAG_COMMAND="git tag"
+TAG_COMMAND="git tag $FORCE_FLAG"
 TAG_TYPE="Ringan (Lightweight)"
 
 if [[ "$is_release" == "y" ]]; then
@@ -39,30 +92,38 @@ if [[ "$is_release" == "y" ]]; then
     exit 1
   fi
   
-  # Set perintah untuk Tag Anotasi
-  TAG_COMMAND="git tag -a -m \"$tag_message\""
+  # Set perintah untuk Tag Anotasi dengan flag -f jika ada
+  TAG_COMMAND="git tag -a $FORCE_FLAG -m \"$tag_message\""
 fi
 
-# 1. Buat tag
-echo "🏷️  Membuat tag $TAG_TYPE: $tag_version"
+# 3. Buat/Ganti tag
+echo "🏷️  Membuat/Mengganti tag $TAG_TYPE: $tag_version"
 
-# Eksekusi perintah tag yang telah disiapkan
+# Eksekusi perintah tag
 eval $TAG_COMMAND "$tag_version"
 
 # Cek status pembuatan tag
 if [ $? -ne 0 ]; then
-  echo "❌ Error saat membuat tag. Pastikan tag belum ada."
+  echo "❌ Error saat membuat tag. Periksa pesan error di atas."
   exit 1
 fi
 
-# 2. Push tag ke remote
-echo "🚀 Mengirim tag '$tag_version' ke remote..."
-git push origin "$tag_version"
+# 4. Push tag ke remote
+PUSH_TAG_COMMAND="git push origin $tag_version"
+if [[ "$force_tag" == "y" ]]; then
+  echo "🔥 Mengirim tag ke remote dengan force..."
+  # Gunakan -f saat push tag
+  PUSH_TAG_COMMAND="git push -f origin $tag_version"
+fi
 
-# Cek status push
+# Eksekusi push tag
+eval $PUSH_TAG_COMMAND
+
+# Cek status push tag
 if [ $? -ne 0 ]; then
-  echo "❌ Error saat push tag. Mungkin Anda perlu memastikan remote 'origin' sudah terhubung."
+  echo "❌ Error saat push tag. Mungkin Anda perlu memastikan remote 'origin' sudah terhubung atau memiliki hak akses."
   exit 1
 fi
 
-echo "✅ Tag '$tag_version' ($TAG_TYPE) berhasil dibuat dan didorong (pushed) ke remote."
+echo "-------------------------------------"
+echo "✅ SELURUH PROSES SELESAI. Tag '$tag_version' ($TAG_TYPE) berhasil didorong (pushed) ke remote."
