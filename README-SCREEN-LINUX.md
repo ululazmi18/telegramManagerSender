@@ -291,6 +291,24 @@ netstat -tulpn | grep -E '3000|3001|8000|6379'
 - Service akan tetap jalan meskipun terminal ditutup
 - Untuk production, disarankan menggunakan systemd atau PM2
 
+### Redis Management
+
+Script ini **otomatis mendeteksi** Redis yang sudah berjalan:
+
+- ✅ Jika Redis sudah berjalan sebagai **systemd service**, script akan menggunakannya
+- ✅ Jika Redis belum berjalan, script akan menjalankannya di **screen**
+- ✅ Kompatibel dengan laptop yang sudah ada Redis systemd maupun yang belum
+
+**Untuk meringankan laptop** (agar Redis hanya jalan saat diperlukan):
+
+```bash
+# Disable Redis systemd
+sudo systemctl stop redis-server
+sudo systemctl disable redis-server
+```
+
+Setelah itu, Redis hanya akan jalan di screen saat aplikasi dijalankan.
+
 ## 🆘 Support
 
 Jika ada masalah, buka issue di GitHub atau hubungi developer.

@@ -24,24 +24,30 @@ start_services() {
     
     sleep 2
     
-    # Start Redis
-    echo -e "${BLUE}Starting Redis...${NC}"
-    screen -dmS redis bash -c "cd '$BASEDIR' && redis-server '$BASEDIR/redis.conf'"
-    sleep 2
+    # Start Redis (cek dulu apakah sudah berjalan sebagai systemd service)
+    if systemctl is-active --quiet redis-server 2>/dev/null; then
+        echo -e "${GREEN}✅ Redis already running (systemd service)${NC}"
+    elif pgrep -x redis-server > /dev/null; then
+        echo -e "${GREEN}✅ Redis already running${NC}"
+    else
+        echo -e "${BLUE}Starting Redis...${NC}"
+        screen -dmS redis bash -c "cd '$BASEDIR' && redis-server '$BASEDIR/redis.conf' 2>&1; echo 'Redis exited. Press enter to close.'; read"
+        sleep 2
+    fi
     
     # Start Python Service
     echo -e "${BLUE}Starting Python Service...${NC}"
-    screen -dmS python-service bash -c "cd '$BASEDIR/python-service' && source venv/bin/activate && python app.py"
-    sleep 3
+    screen -dmS python-service bash -c "cd '$BASEDIR/python-service' && source venv/bin/activate && python app.py 2>&1; echo 'Python service exited. Press enter to close.'; read"
+    sleep 4
     
     # Start Backend
     echo -e "${BLUE}Starting Backend...${NC}"
-    screen -dmS backend bash -c "cd '$BASEDIR/backend' && node server.js"
+    screen -dmS backend bash -c "cd '$BASEDIR/backend' && node server.js 2>&1; echo 'Backend exited. Press enter to close.'; read"
     sleep 3
     
     # Start Frontend
     echo -e "${BLUE}Starting Frontend...${NC}"
-    screen -dmS frontend bash -c "cd '$BASEDIR/frontend' && npm start"
+    screen -dmS frontend bash -c "cd '$BASEDIR/frontend' && npm start 2>&1; echo 'Frontend exited. Press enter to close.'; read"
     sleep 3
     
     echo ""
@@ -54,7 +60,20 @@ stop_services() {
     echo -e "${YELLOW}🛑 Stopping all services...${NC}"
     echo ""
     
-    screen -S redis -X quit 2>/dev/null && echo -e "${GREEN}✅ Redis stopped${NC}" || echo -e "${YELLOW}⚠️  Redis not running${NC}"
+    # Stop Redis first (check if it's managed by us, not systemd)
+    if ! systemctl is-active --quiet redis-server 2>/dev/null; then
+        if pgrep -x redis-server > /dev/null; then
+            echo -e "${BLUE}Stopping Redis...${NC}"
+            if redis-cli shutdown 2>/dev/null; then
+                echo -e "${GREEN}✅ Redis stopped${NC}"
+            else
+                pkill -f "redis-server" && echo -e "${GREEN}✅ Redis stopped${NC}"
+            fi
+        fi
+    fi
+    
+    # Stop screen sessions
+    screen -S redis -X quit 2>/dev/null
     screen -S python-service -X quit 2>/dev/null && echo -e "${GREEN}✅ Python Service stopped${NC}" || echo -e "${YELLOW}⚠️  Python Service not running${NC}"
     screen -S backend -X quit 2>/dev/null && echo -e "${GREEN}✅ Backend stopped${NC}" || echo -e "${YELLOW}⚠️  Backend not running${NC}"
     screen -S frontend -X quit 2>/dev/null && echo -e "${GREEN}✅ Frontend stopped${NC}" || echo -e "${YELLOW}⚠️  Frontend not running${NC}"
@@ -81,6 +100,10 @@ show_status() {
     
     # Check Redis
     if screen -list | grep -q "redis"; then
+        echo -e "  Redis:          ${GREEN}✅ Running${NC}"
+    elif systemctl is-active --quiet redis-server 2>/dev/null; then
+        echo -e "  Redis:          ${GREEN}✅ Running (systemd)${NC}"
+    elif pgrep -x redis-server > /dev/null; then
         echo -e "  Redis:          ${GREEN}✅ Running${NC}"
     else
         echo -e "  Redis:          ${RED}❌ Stopped${NC}"
