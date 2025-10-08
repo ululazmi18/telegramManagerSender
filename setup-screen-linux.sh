@@ -85,30 +85,10 @@ pip install --upgrade pip
 echo "Cleaning old packages..."
 pip uninstall -y fastapi uvicorn pydantic starlette 2>/dev/null || true
 
-# Install Pydantic v2 yang kompatibel dengan Python 3.12
-echo "Installing FastAPI + Pydantic v2..."
-if pip install --no-cache-dir pydantic==2.5.0 fastapi==0.109.0 uvicorn==0.25.0 pyrogram==2.0.106; then
-    if python -c "from fastapi import FastAPI" 2>/dev/null; then
-        echo -e "${GREEN}✅ FastAPI installed successfully${NC}"
-    else
-        echo -e "${YELLOW}⚠️ FastAPI import failed, switching to Flask...${NC}"
-        pip uninstall -y fastapi uvicorn pydantic 2>/dev/null || true
-        pip install --no-cache-dir flask flask-cors pyrogram==2.0.106
-        if [ -f "app_flask.py" ]; then
-            mv app.py app_fastapi_backup.py 2>/dev/null || true
-            cp app_flask.py app.py
-            echo -e "${GREEN}✅ Flask activated${NC}"
-        fi
-    fi
-else
-    echo -e "${YELLOW}⚠️ FastAPI install failed, using Flask...${NC}"
-    pip install --no-cache-dir flask flask-cors pyrogram==2.0.106
-    if [ -f "app_flask.py" ]; then
-        mv app.py app_fastapi_backup.py 2>/dev/null || true
-        cp app_flask.py app.py
-        echo -e "${GREEN}✅ Flask activated${NC}"
-    fi
-fi
+# Install Flask dependencies
+echo "Installing Flask dependencies..."
+pip install --no-cache-dir -r requirements.txt
+echo -e "${GREEN}✅ Flask dependencies installed successfully${NC}"
 
 # Nonaktifkan venv setelah selesai step Python
 deactivate 2>/dev/null || true

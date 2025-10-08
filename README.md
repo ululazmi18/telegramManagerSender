@@ -46,7 +46,7 @@ bash setup-screen-linux.sh
 
 - **Frontend:** React.js + Bootstrap
 - **Backend:** Node.js + Express
-- **Python Service:** FastAPI/Flask + Pyrogram
+- **Python Service:** Flask + Pyrogram
 - **Database:** SQLite
 - **Queue:** Redis + BullMQ
 - **Process Manager:** Screen
@@ -114,16 +114,16 @@ bash manage-services.sh logs
 
 ```
 ┌─────────────────────────────────────────┐
-│         Frontend (React)                │
-│         Port: 3001                      │
-└──────────────┬──────────────────────────┘
-               │
-┌──────────────▼──────────────────────────┐
-│         Backend (Node.js)               │
-│         Port: 3000                      │
-└──────┬───────────────────────┬──────────┘
-       │                       │
-┌──────▼──────────┐   ┌────────▼─────────┐
+│               Frontend (React)          │
+│               Port: 3001                │
+└─────────────────────┬───────────────────┘
+                      │
+┌─────────────────────▼───────────────────┐
+│              Backend (Node.js)          │
+│               Port: 3000                │
+└────────┬───────────────────────┬────────┘
+         │                       │
+┌────────▼────────┐   ┌──────────▼───────┐
 │ Python Service  │   │      Redis       │
 │ Port: 8000      │   │   Port: 6379     │
 └─────────────────┘   └──────────────────┘

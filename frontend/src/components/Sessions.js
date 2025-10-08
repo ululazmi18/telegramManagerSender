@@ -110,6 +110,20 @@ function Sessions() {
     }
   };
 
+  const handleDeleteCredential = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this API credential?')) {
+      return;
+    }
+    try {
+      await axios.delete(`/api/credentials/${id}`);
+      setSuccess('API credential deleted successfully');
+      await fetchCredentials();
+      await fetchActiveCredential();
+    } catch (err) {
+      setError('Failed to delete API credential: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
   const handleShowModal = (session = null) => {
     setCurrentSession({ name: '', session_string: '' });
     setCountrySearch('');
@@ -137,9 +151,13 @@ function Sessions() {
       setError('Please configure and activate an API credential first.');
       return;
     }
-    const fullPhone = phoneFull.trim();
+    // Auto-add + if not present
+    let fullPhone = phoneFull.trim();
+    if (fullPhone && !fullPhone.startsWith('+')) {
+      fullPhone = '+' + fullPhone;
+    }
     if (!/^\+[0-9]{6,15}$/.test(fullPhone)) {
-      setError('Please enter a valid phone number in international format, e.g., +628123456789.');
+      setError('Please enter a valid phone number (e.g., 628123456789 or +628123456789).');
       return;
     }
     try {
@@ -423,14 +441,15 @@ function Sessions() {
           {registrationMode === 'phone' ? (
             <>
               {/* Full international phone number */}
+              <Form.Label className="text-muted small mb-1">Phone Number (+ is optional)</Form.Label>
               <Form.Control
                 className="mb-3"
                 size="sm"
                 type="tel"
-                placeholder="e.g., +628123456789"
+                placeholder="e.g., 628123456789 or +628123456789"
                 value={phoneFull}
                 onChange={(e) => setPhoneFull(e.target.value)}
-                style={{ maxWidth: '280px' }}
+                style={{ maxWidth: '320px' }}
               />
               <div className="d-flex gap-2 mb-3">
                 <Form.Control
@@ -555,24 +574,52 @@ function Sessions() {
             </thead>
             <tbody>
               {credentials.map((cred) => (
-                <tr key={cred.id}>
+                <tr key={cred.id} className={cred.is_active ? 'table-success' : ''}>
                   <td>{cred.name}</td>
                   <td>{cred.api_id}</td>
-                  <td>{cred.is_active ? 'Yes' : 'No'}</td>
                   <td>
-                    {!cred.is_active && (
-                      <Button size="sm" variant="outline-success" onClick={() => handleActivateCredential(cred.id)}>
-                        Set Active
+                    {cred.is_active ? (
+                      <span className="badge bg-success">Active</span>
+                    ) : (
+                      <span className="badge bg-secondary">Inactive</span>
+                    )}
+                  </td>
+                  <td>
+                    {!cred.is_active ? (
+                      <>
+                        <Button 
+                          size="sm" 
+                          variant="outline-success" 
+                          onClick={() => handleActivateCredential(cred.id)}
+                          className="me-2"
+                        >
+                          Activate
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline-danger" 
+                          onClick={() => handleDeleteCredential(cred.id)}
+                        >
+                          Delete
+                        </Button>
+                      </>
+                    ) : (
+                      <Button 
+                        size="sm" 
+                        variant="outline-danger" 
+                        onClick={() => handleDeleteCredential(cred.id)}
+                      >
+                        Delete
                       </Button>
                     )}
                   </td>
                 </tr>
               ))}
-              {credentials.length === 0 && (
+              {credentials.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="text-center">No credentials saved</td>
                 </tr>
-              )}
+              ) : null}
             </tbody>
           </Table>
         </Modal.Body>

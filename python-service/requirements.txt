@@ -1,17 +1,8 @@
-# Gunakan versi yang kompatibel dengan Termux
-# Untuk Termux, beberapa package perlu versi spesifik yang tidak memerlukan kompilasi Rust
+# Flask web framework
+flask==2.3.3
+flask-cors==4.0.0
 
-# Option 1: Dengan pydantic v1 (lebih stabil di Termux)
-fastapi==0.100.0
-uvicorn==0.23.0
-pydantic==1.10.13
+# Telegram client
 pyrogram==2.0.106
+tgcrypto==1.2.5
 
-# Option 2 (jika option 1 gagal): Versi minimal
-# fastapi
-# uvicorn
-# pyrogram
-
-# TgCrypto opsional (untuk performa, tapi sering gagal compile di Termux)
-# Uncomment jika berhasil compile:
-# tgcrypto==1.2.5

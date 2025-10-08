@@ -31,12 +31,20 @@ authentication_sessions = {}
 # Helper to run async functions
 def run_async(coro):
     """Run async coroutine in sync context"""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    
     try:
         return loop.run_until_complete(coro)
-    finally:
-        loop.close()
+    except Exception as e:
+        logger.error(f"Error in run_async: {e}")
+        raise
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -58,10 +66,13 @@ def export_session():
             client = Client(session_name, api_id=api_id, api_hash=api_hash)
             await client.connect()
             sent_code = await client.send_code(phone_number)
+            await client.disconnect()
             
             session_id = f"auth_{hashlib.md5((phone_number + str(sent_code.phone_code_hash)).encode()).hexdigest()}"
             authentication_sessions[session_id] = {
-                "client": client,
+                "api_id": api_id,
+                "api_hash": api_hash,
+                "session_name": session_name,
                 "phone_number": phone_number,
                 "phone_code_hash": sent_code.phone_code_hash
             }
@@ -86,38 +97,79 @@ def complete_auth():
     phone_code = data.get("phone_code")
     password = data.get("password")
     
+    logger.info(f"Complete auth request - session_id: {session_id}, has_code: {bool(phone_code)}, code_length: {len(phone_code) if phone_code else 0}")
+    logger.info(f"Active sessions: {list(authentication_sessions.keys())}")
+    
     if session_id not in authentication_sessions:
+        logger.error(f"Invalid session ID: {session_id}")
         return jsonify({"success": False, "error": "Invalid session ID"}), 400
     
     auth_session = authentication_sessions[session_id]
-    client = auth_session["client"]
+    logger.info(f"Auth session data - phone: {auth_session['phone_number']}, has_hash: {bool(auth_session.get('phone_code_hash'))}")
     
     try:
         async def _complete():
+            # Create new client with saved session data
+            logger.info(f"Creating client with session_name: {auth_session['session_name']}")
+            client = Client(
+                auth_session["session_name"],
+                api_id=auth_session["api_id"],
+                api_hash=auth_session["api_hash"]
+            )
+            await client.connect()
+            logger.info("Client connected, attempting sign_in")
+            
             try:
                 await client.sign_in(auth_session["phone_number"], auth_session["phone_code_hash"], phone_code)
+                logger.info("Sign in successful")
             except Exception as e:
                 from pyrogram import errors
                 if isinstance(e, errors.SessionPasswordNeeded):
                     if not password:
+                        await client.disconnect()
                         raise Exception("PASSWORD_REQUIRED")
                     try:
                         await client.check_password(password)
                     except:
+                        await client.disconnect()
                         raise Exception("BAD_PASSWORD")
                 else:
+                    await client.disconnect()
                     raise e
             
             session_string = await client.export_session_string()
-            del authentication_sessions[session_id]
             await client.disconnect()
+            
+            # Clean up session files
+            import os
+            session_file = f"{auth_session['session_name']}.session"
+            if os.path.exists(session_file):
+                os.remove(session_file)
+            journal_file = f"{session_file}-journal"
+            if os.path.exists(journal_file):
+                os.remove(journal_file)
+            
+            del authentication_sessions[session_id]
             
             return {"success": True, "session_string": session_string}
         
         result = run_async(_complete())
         return jsonify(result)
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 400
+        error_msg = str(e)
+        logger.error(f"Complete auth error: {error_msg}")
+        
+        # Parse Telegram errors for better user messages
+        if "PHONE_CODE_EXPIRED" in error_msg:
+            error_msg = "Verification code has expired. Please request a new code."
+        elif "PHONE_CODE_INVALID" in error_msg:
+            error_msg = "Invalid verification code. Please check and try again."
+        elif "PASSWORD_REQUIRED" in error_msg:
+            error_msg = "Two-factor authentication is enabled. Please enter your password."
+        elif "BAD_PASSWORD" in error_msg:
+            error_msg = "Incorrect password. Please try again."
+        
+        return jsonify({"success": False, "error": error_msg}), 400
 
 @app.route('/send_message', methods=['POST'])
 def send_message():

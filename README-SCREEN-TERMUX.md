@@ -116,7 +116,7 @@ bash manage-services.sh logs
 Semua service berjalan di screen sessions terpisah:
 
 - `redis` - Redis server
-- `python-service` - Python/FastAPI service (Port 8000)
+- `python-service` - Python/Flask service (Port 8000)
 - `backend` - Node.js backend (Port 3000)
 - `frontend` - React frontend (Port 3001)
 
