@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Table, Button, Form, Alert, Modal, ListGroup, Badge } from 'react-bootstrap';
+import { Container, Row, Col, Table, Button, Form, Alert, Modal, ListGroup, Badge, Dropdown } from 'react-bootstrap';
 import axios from 'axios';
 
 function Channels() {
@@ -414,21 +414,31 @@ function Channels() {
                   </td>
                   <td>{channel.name || <span className="text-muted">-</span>}</td>
                   <td>
-                    <Button
-                      variant="outline-primary"
-                      size="sm"
-                      className="me-1"
-                      onClick={() => handleEditChannel(channel)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline-danger"
-                      size="sm"
-                      onClick={() => openDeleteChannelModal(channel)}
-                    >
-                      Delete
-                    </Button>
+                    <Dropdown drop="auto">
+                      <Dropdown.Toggle 
+                        variant="outline-secondary" 
+                        size="sm" 
+                        className="border-0 p-1"
+                        style={{ width: '32px', height: '32px' }}
+                      >
+                        <span style={{ fontSize: '16px', lineHeight: '1' }}>⋮</span>
+                      </Dropdown.Toggle>
+
+                      <Dropdown.Menu align="end" flip={true}>
+                        <Dropdown.Item onClick={() => handleEditChannel(channel)}>
+                          <span className="me-2">✏️</span>
+                          Edit Channel
+                        </Dropdown.Item>
+                        <Dropdown.Divider />
+                        <Dropdown.Item 
+                          onClick={() => openDeleteChannelModal(channel)}
+                          className="text-danger"
+                        >
+                          <span className="me-2">🗑️</span>
+                          Delete Channel
+                        </Dropdown.Item>
+                      </Dropdown.Menu>
+                    </Dropdown>
                   </td>
                 </tr>
               ))}

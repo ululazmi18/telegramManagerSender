@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Table, Button, Modal, Form, Alert } from 'react-bootstrap';
+import { Container, Table, Button, Modal, Form, Alert, Dropdown } from 'react-bootstrap';
 import axios from 'axios';
 
 function Projects() {
@@ -624,7 +624,8 @@ function Projects() {
             placeholder="Search projects..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ width: '240px' }}
+            className="search-input-mobile"
+            style={{ width: '240px', maxWidth: '100%' }}
           />
           <Button variant="primary" onClick={() => handleShowModal()}>
             Add Project
@@ -635,17 +636,18 @@ function Projects() {
       {error && <Alert variant="danger">{error}</Alert>}
       {success && <Alert variant="success">{success}</Alert>}
 
-      <Table striped bordered hover>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Description</th>
-            <th>Status</th>
-            <th>Created At</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
+      <div className="table-responsive">
+        <Table striped bordered hover>
+          <thead>
+            <tr>
+              <th className="d-none-xs">ID</th>
+              <th>Name</th>
+              <th className="d-none d-md-table-cell">Description</th>
+              <th>Status</th>
+              <th className="d-none d-lg-table-cell">Created At</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
         <tbody>
           {projects
             .filter((project) => {
@@ -660,73 +662,84 @@ function Projects() {
             })
             .map((project) => (
             <tr key={project.id}>
-              <td>{project.id.substring(0, 8)}...</td>
+              <td className="d-none-xs">{project.id.substring(0, 8)}...</td>
               <td>{project.name}</td>
-              <td>{project.description}</td>
+              <td className="d-none d-md-table-cell">{project.description}</td>
               <td>
                 <span className={`badge ${project.status === 'running' ? 'bg-success' : project.status === 'stopped' ? 'bg-secondary' : project.status === 'paused' ? 'bg-warning' : 'bg-danger'}`}>
                   {project.status}
                 </span>
               </td>
-              <td>{new Date(project.created_at).toLocaleString()}</td>
+              <td className="d-none d-lg-table-cell">{new Date(project.created_at).toLocaleString()}</td>
               <td>
-                {project.status === 'stopped' ? (
-                  <Button 
-                    variant="success" 
-                    size="sm" 
-                    className="me-2"
-                    onClick={() => handleRunClick(project)}
-                    disabled={actionLoading}
-                  >
-                    {actionLoading ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                        Starting...
-                      </>
-                    ) : (
-                      '▶️ Run'
-                    )}
-                  </Button>
-                ) : (
-                  <Button 
-                    variant="warning" 
-                    size="sm" 
-                    className="me-2"
-                    onClick={() => handleStop(project.id)}
-                    disabled={actionLoading}
-                  >
-                    ⏸️ Stop
-                  </Button>
-                )}
-                <Button 
-                  variant="outline-primary" 
-                  size="sm"
-                  className="me-2"
-                  onClick={() => handleShowModal(project)}
-                >
-                  Edit
-                </Button>
-                <Button 
-                  variant="outline-info" 
-                  size="sm"
-                  className="me-2"
-                  onClick={() => handleShowLogs(project)}
-                  title="View project logs"
-                >
-                  📋 Logs
-                </Button>
-                <Button 
-                  variant="outline-danger" 
-                  size="sm"
-                  onClick={() => openDeleteModal(project)}
-                >
-                  Delete
-                </Button>
+                <div className="d-flex align-items-center gap-2">
+                  {/* Primary Action Button */}
+                  {project.status === 'stopped' ? (
+                    <Button 
+                      variant="success" 
+                      size="sm" 
+                      onClick={() => handleRunClick(project)}
+                      disabled={actionLoading}
+                      className="flex-shrink-0"
+                    >
+                      {actionLoading ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                          Starting...
+                        </>
+                      ) : (
+                        '▶️ Run'
+                      )}
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="warning" 
+                      size="sm" 
+                      onClick={() => handleStop(project.id)}
+                      disabled={actionLoading}
+                      className="flex-shrink-0"
+                    >
+                      ⏸️ Stop
+                    </Button>
+                  )}
+                  
+                  {/* Actions Dropdown */}
+                  <Dropdown drop="auto">
+                    <Dropdown.Toggle 
+                      variant="outline-secondary" 
+                      size="sm" 
+                      className="border-0 p-1"
+                      style={{ width: '32px', height: '32px' }}
+                    >
+                      <span style={{ fontSize: '16px', lineHeight: '1' }}>⋮</span>
+                    </Dropdown.Toggle>
+
+                    <Dropdown.Menu align="end" flip={true}>
+                      <Dropdown.Item onClick={() => handleShowModal(project)}>
+                        <span className="me-2">✏️</span>
+                        Edit Project
+                      </Dropdown.Item>
+                      <Dropdown.Item onClick={() => handleShowLogs(project)}>
+                        <span className="me-2">📋</span>
+                        View Logs
+                      </Dropdown.Item>
+                      <Dropdown.Divider />
+                      <Dropdown.Item 
+                        onClick={() => openDeleteModal(project)}
+                        className="text-danger"
+                      >
+                        <span className="me-2">🗑️</span>
+                        Delete Project
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown>
+                </div>
               </td>
             </tr>
           ))}
         </tbody>
-      </Table>
+        </Table>
+      </div>
 
       <Modal show={showModal} onHide={handleCloseModal} size="lg">
         <Modal.Header closeButton>

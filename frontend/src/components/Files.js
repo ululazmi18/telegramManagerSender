@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Table, Button, Form, Alert, Modal, Row, Col } from 'react-bootstrap';
+import { Container, Table, Button, Form, Alert, Modal, Row, Col, Dropdown } from 'react-bootstrap';
 import axios from 'axios';
 
 function Files() {
@@ -235,38 +235,50 @@ function Files() {
               </td>
               <td>{(file.size / 1024).toFixed(2)} KB</td>
               <td>
-                <div className="btn-group" role="group">
+                <div className="d-flex align-items-center gap-2">
+                  {/* Primary Action Button */}
                   <Button 
                     variant="outline-primary" 
                     size="sm"
                     onClick={() => handlePreview(file)}
                     disabled={!['text', 'photo', 'video'].includes(file.file_type)}
+                    className="flex-shrink-0"
                   >
-                    Preview
+                    👁️ Preview
                   </Button>
-                  <Button 
-                    variant="outline-secondary" 
-                    size="sm"
-                    onClick={() => handleDownload(file.id, file.filename)}
-                  >
-                    Download
-                  </Button>
-                  {['photo', 'video'].includes(file.file_type) && (
-                    <Button 
-                      variant="outline-info" 
-                      size="sm"
-                      onClick={() => handleOpenInNewTab(file)}
+                  
+                  {/* Actions Dropdown */}
+                  <Dropdown drop="auto">
+                    <Dropdown.Toggle 
+                      variant="outline-secondary" 
+                      size="sm" 
+                      className="border-0 p-1"
+                      style={{ width: '32px', height: '32px' }}
                     >
-                      Open
-                    </Button>
-                  )}
-                  <Button 
-                    variant="outline-danger" 
-                    size="sm"
-                    onClick={() => openDeleteModal(file)}
-                  >
-                    Delete
-                  </Button>
+                      <span style={{ fontSize: '16px', lineHeight: '1' }}>⋮</span>
+                    </Dropdown.Toggle>
+
+                    <Dropdown.Menu align="end" flip={true}>
+                      <Dropdown.Item onClick={() => handleDownload(file.id, file.filename)}>
+                        <span className="me-2">📥</span>
+                        Download File
+                      </Dropdown.Item>
+                      {['photo', 'video'].includes(file.file_type) && (
+                        <Dropdown.Item onClick={() => handleOpenInNewTab(file)}>
+                          <span className="me-2">🔗</span>
+                          Open in New Tab
+                        </Dropdown.Item>
+                      )}
+                      <Dropdown.Divider />
+                      <Dropdown.Item 
+                        onClick={() => openDeleteModal(file)}
+                        className="text-danger"
+                      >
+                        <span className="me-2">🗑️</span>
+                        Delete File
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown>
                 </div>
               </td>
             </tr>

@@ -127,73 +127,77 @@ function Dashboard() {
       
       {/* Statistics Cards */}
       <Row className="g-3 mb-4">
-        <Col md={3}>
+        <Col xs={6} md={3}>
           <Card className="border-0 shadow-sm h-100">
-            <Card.Body>
-              <div className="d-flex justify-content-between align-items-start">
-                <div>
-                  <p className="text-muted mb-1 small">Projects</p>
-                  <h2 className="mb-0">{stats.projects?.total || 0}</h2>
+            <Card.Body className="p-3">
+              <div className="stats-card-header">
+                <div className="stats-card-content">
+                  <p className="text-muted mb-0 small">Projects</p>
+                  <h3 className="mb-0 fw-bold">{stats.projects?.total || 0}</h3>
                 </div>
-                <div className="bg-primary bg-opacity-10 p-3 rounded">
-                  <span style={{fontSize: '2rem'}}>📁</span>
+                <div className="stats-card-icon bg-primary bg-opacity-10 p-2 rounded">
+                  <span style={{fontSize: '1.5rem'}}>📁</span>
                 </div>
               </div>
-              <div className="mt-3">
-                <Badge bg="success" className="me-1">{stats.projects?.running || 0} running</Badge>
-                <Badge bg="secondary">{stats.projects?.stopped || 0} stopped</Badge>
+              <div className="stats-card-footer">
+                <Badge bg="success" className="small">{stats.projects?.running || 0} running</Badge>
+                <Badge bg="secondary" className="small">{stats.projects?.stopped || 0} stopped</Badge>
               </div>
             </Card.Body>
           </Card>
         </Col>
         
-        <Col md={3}>
+        <Col xs={6} md={3}>
           <Card className="border-0 shadow-sm h-100">
-            <Card.Body>
-              <div className="d-flex justify-content-between align-items-start">
-                <div>
-                  <p className="text-muted mb-1 small">Sessions</p>
-                  <h2 className="mb-0">{stats.sessions?.total || 0}</h2>
+            <Card.Body className="p-3">
+              <div className="stats-card-header">
+                <div className="stats-card-content">
+                  <p className="text-muted mb-0 small">Sessions</p>
+                  <h3 className="mb-0 fw-bold">{stats.sessions?.total || 0}</h3>
                 </div>
-                <div className="bg-success bg-opacity-10 p-3 rounded">
-                  <span style={{fontSize: '2rem'}}>👤</span>
+                <div className="stats-card-icon bg-success bg-opacity-10 p-2 rounded">
+                  <span style={{fontSize: '1.5rem'}}>👤</span>
                 </div>
               </div>
-              <p className="text-muted small mb-0 mt-3">Active Telegram accounts</p>
+              <div className="stats-card-footer">
+                <p className="text-muted small mb-0">Active Telegram accounts</p>
+              </div>
             </Card.Body>
           </Card>
         </Col>
         
-        <Col md={3}>
+        <Col xs={6} md={3}>
           <Card className="border-0 shadow-sm h-100">
-            <Card.Body>
-              <div className="d-flex justify-content-between align-items-start">
-                <div>
-                  <p className="text-muted mb-1 small">Channels</p>
-                  <h2 className="mb-0">{stats.channels?.total || 0}</h2>
+            <Card.Body className="p-3">
+              <div className="stats-card-header">
+                <div className="stats-card-content">
+                  <p className="text-muted mb-0 small">Channels</p>
+                  <h3 className="mb-0 fw-bold">{stats.channels?.total || 0}</h3>
                 </div>
-                <div className="bg-info bg-opacity-10 p-3 rounded">
-                  <span style={{fontSize: '2rem'}}>📢</span>
+                <div className="stats-card-icon bg-info bg-opacity-10 p-2 rounded">
+                  <span style={{fontSize: '1.5rem'}}>📢</span>
                 </div>
               </div>
-              <p className="text-muted small mb-0 mt-3">Target destinations</p>
+              <div className="stats-card-footer">
+                <p className="text-muted small mb-0">Target destinations</p>
+              </div>
             </Card.Body>
           </Card>
         </Col>
         
-        <Col md={3}>
+        <Col xs={6} md={3}>
           <Card className="border-0 shadow-sm h-100">
-            <Card.Body>
-              <div className="d-flex justify-content-between align-items-start">
-                <div>
-                  <p className="text-muted mb-1 small">Files</p>
-                  <h2 className="mb-0">{stats.files?.total || 0}</h2>
+            <Card.Body className="p-3">
+              <div className="stats-card-header">
+                <div className="stats-card-content">
+                  <p className="text-muted mb-0 small">Files</p>
+                  <h3 className="mb-0 fw-bold">{stats.files?.total || 0}</h3>
                 </div>
-                <div className="bg-warning bg-opacity-10 p-3 rounded">
-                  <span style={{fontSize: '2rem'}}>📄</span>
+                <div className="stats-card-icon bg-warning bg-opacity-10 p-2 rounded">
+                  <span style={{fontSize: '1.5rem'}}>📄</span>
                 </div>
               </div>
-              <div className="mt-3">
+              <div className="stats-card-footer">
                 <small className="text-muted">
                   {((stats.files?.total_size || 0) / 1024 / 1024).toFixed(2)} MB total
                 </small>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Table, Button, Modal, Form, Alert } from 'react-bootstrap';
+import { Container, Table, Button, Modal, Form, Alert, Dropdown } from 'react-bootstrap';
 import axios from 'axios';
 
 function Sessions() {
@@ -345,7 +345,8 @@ function Sessions() {
             placeholder="Search sessions..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ width: '240px' }}
+            className="search-input-mobile"
+            style={{ width: '240px', maxWidth: '100%' }}
           />
           <Button variant="outline-secondary" onClick={handleShowCredModal}>
             Configure API
@@ -368,17 +369,18 @@ function Sessions() {
         )}
       </div>
 
-      <Table striped bordered hover>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>First Name</th>
-            <th>Last Name</th>
-            <th>Username</th>
-            <th>Data Time</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
+      <div className="table-responsive">
+        <Table striped bordered hover>
+          <thead>
+            <tr>
+              <th className="d-none-xs">ID</th>
+              <th>First Name</th>
+              <th className="d-none d-md-table-cell">Last Name</th>
+              <th>Username</th>
+              <th className="d-none d-lg-table-cell">Data Time</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
         <tbody>
           {sessions
             .filter((session) => {
@@ -393,43 +395,58 @@ function Sessions() {
             })
             .map((session) => (
             <tr key={session.id}>
-              <td>{session.id.substring(0, 8)}...</td>
+              <td className="d-none-xs">{session.id.substring(0, 8)}...</td>
               <td>{session.first_name || ''}</td>
-              <td>{session.last_name || ''}</td>
+              <td className="d-none d-md-table-cell">{session.last_name || ''}</td>
               <td>{session.username || ''}</td>
-              <td>{formatDateTime(session.login_at)}</td>
+              <td className="d-none d-lg-table-cell">{formatDateTime(session.login_at)}</td>
               <td>
-                <Button 
-                  variant="outline-success" 
-                  size="sm" 
-                  className="me-2"
-                  onClick={() => handleUpdateSession(session.id)}
-                  disabled={!activeCredential}
-                  title="Refresh session data from Telegram"
-                >
-                  Update
-                </Button>
-                <Button 
-                  variant="outline-primary" 
-                  size="sm" 
-                  className="me-2"
-                  onClick={() => handleDownloadSession(session.id)}
-                  title="Download complete session data as text file"
-                >
-                  Download
-                </Button>
-                <Button 
-                  variant="outline-danger" 
-                  size="sm"
-                  onClick={() => openDeleteModal(session)}
-                >
-                  Delete
-                </Button>
+                <div className="d-flex align-items-center gap-2">
+                  {/* Primary Action Button */}
+                  <Button 
+                    variant="outline-success" 
+                    size="sm" 
+                    onClick={() => handleUpdateSession(session.id)}
+                    disabled={!activeCredential}
+                    title="Refresh session data from Telegram"
+                    className="flex-shrink-0"
+                  >
+                    🔄 Update
+                  </Button>
+                  
+                  {/* Actions Dropdown */}
+                  <Dropdown drop="auto">
+                    <Dropdown.Toggle 
+                      variant="outline-secondary" 
+                      size="sm" 
+                      className="border-0 p-1"
+                      style={{ width: '32px', height: '32px' }}
+                    >
+                      <span style={{ fontSize: '16px', lineHeight: '1' }}>⋮</span>
+                    </Dropdown.Toggle>
+
+                    <Dropdown.Menu align="end" flip={true}>
+                      <Dropdown.Item onClick={() => handleDownloadSession(session.id)}>
+                        <span className="me-2">📥</span>
+                        Download Session
+                      </Dropdown.Item>
+                      <Dropdown.Divider />
+                      <Dropdown.Item 
+                        onClick={() => openDeleteModal(session)}
+                        className="text-danger"
+                      >
+                        <span className="me-2">🗑️</span>
+                        Delete Session
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown>
+                </div>
               </td>
             </tr>
           ))}
         </tbody>
-      </Table>
+        </Table>
+      </div>
 
       <Modal show={showModal} onHide={handleCloseModal} size="md" centered>
         <Modal.Header closeButton>
