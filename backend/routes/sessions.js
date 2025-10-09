@@ -312,4 +312,74 @@ router.delete('/:id', (req, res) => {
   });
 });
 
+// GET /api/sessions/:id/download - get complete session data for download
+router.get('/:id/download', (req, res) => {
+  const { id } = req.params;
+  
+  // Get complete session data including session_string
+  const sql = `
+    SELECT 
+      id, name, first_name, last_name, username, phone_number, 
+      tg_id, session_string, login_at, created_at, updated_at
+    FROM sessions 
+    WHERE id = ?
+  `;
+  
+  db.get(sql, [id], (err, session) => {
+    if (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+    
+    if (!session) {
+      return res.status(404).json({ success: false, error: 'Session not found' });
+    }
+    
+    // Create filename: "full_name_id.txt"
+    const fullName = [session.first_name, session.last_name].filter(Boolean).join(' ') || 'Unknown';
+    const filename = `${fullName}_${session.tg_id || session.id.substring(0, 8)}.txt`;
+    
+    // Create file content with all session data
+    const content = `=== TELEGRAM SESSION DATA ===
+Generated: ${new Date().toISOString()}
+
+=== USER INFORMATION ===
+Full Name: ${fullName}
+First Name: ${session.first_name || 'N/A'}
+Last Name: ${session.last_name || 'N/A'}
+Username: ${session.username ? '@' + session.username : 'N/A'}
+Phone Number: ${session.phone_number || 'N/A'}
+Telegram ID: ${session.tg_id || 'N/A'}
+
+=== SESSION INFORMATION ===
+Session ID: ${session.id}
+Session Name: ${session.name || 'N/A'}
+Login Date: ${session.login_at || 'N/A'}
+Created Date: ${session.created_at || 'N/A'}
+Updated Date: ${session.updated_at || 'N/A'}
+
+=== SESSION STRING ===
+${session.session_string || 'N/A'}
+
+=== NOTES ===
+- Keep this session string secure and private
+- Do not share this file with unauthorized persons
+- This session string can be used to access your Telegram account
+- If compromised, revoke the session immediately from Telegram settings
+`;
+
+    res.json({
+      success: true,
+      data: {
+        filename: filename,
+        content: content,
+        session: {
+          id: session.id,
+          full_name: fullName,
+          tg_id: session.tg_id
+        }
+      }
+    });
+  });
+});
+
 module.exports = router;

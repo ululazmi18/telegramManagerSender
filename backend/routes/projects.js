@@ -418,4 +418,49 @@ router.delete('/:id', (req, res) => {
   });
 });
 
+// GET /api/projects/:id/logs - get project logs
+router.get('/:id/logs', (req, res) => {
+  const { id } = req.params;
+  const { limit = 100 } = req.query;
+  
+  // Get all process runs for this project
+  const runsSql = 'SELECT id FROM process_runs WHERE project_id = ? ORDER BY created_at DESC';
+  db.all(runsSql, [id], (runsErr, runs) => {
+    if (runsErr) {
+      return res.status(500).json({ success: false, error: runsErr.message });
+    }
+    
+    if (runs.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
+    
+    // Get logs for all runs of this project
+    const runIds = runs.map(run => run.id);
+    const placeholders = runIds.map(() => '?').join(',');
+    const logsSql = `
+      SELECT l.*, pr.created_at as run_started_at
+      FROM logs l
+      JOIN process_runs pr ON l.run_id = pr.id
+      WHERE l.run_id IN (${placeholders})
+      ORDER BY l.created_at DESC
+      LIMIT ?
+    `;
+    
+    db.all(logsSql, [...runIds, parseInt(limit)], (logsErr, logs) => {
+      if (logsErr) {
+        return res.status(500).json({ success: false, error: logsErr.message });
+      }
+      
+      res.json({ 
+        success: true, 
+        data: logs,
+        meta: {
+          total_runs: runs.length,
+          logs_count: logs.length
+        }
+      });
+    });
+  });
+});
+
 module.exports = router;

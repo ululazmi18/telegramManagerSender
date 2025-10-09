@@ -271,8 +271,8 @@ const addSendMessageJob = async (run_id, project_id, target_channel_id, session_
     }
   }
   
-  // Get channel details
-  const channelSql = 'SELECT chat_id FROM channels WHERE id = ?';
+  // Get channel details - use username as chat_id
+  const channelSql = 'SELECT username FROM channels WHERE id = ?';
   const channel = await new Promise((resolve, reject) => {
     db.get(channelSql, [target_channel_id], (err, row) => {
       if (err) reject(err);
@@ -284,9 +284,12 @@ const addSendMessageJob = async (run_id, project_id, target_channel_id, session_
     throw new Error(`Channel not found for target_channel_id: ${target_channel_id}`);
   }
   
-  if (!channel.chat_id) {
-    throw new Error(`Channel ${channel.username || channel.id} has no chat_id. Please update the channel with a valid chat_id to send messages.`);
+  if (!channel.username) {
+    throw new Error(`Channel ${channel.id} has no username. Please update the channel with a valid username (e.g., @channel_name) to send messages.`);
   }
+  
+  // Use username as chat_id
+  const chat_id = channel.username;
   
   // Get session details
   const sessionSql = 'SELECT session_string FROM sessions WHERE id = ?';
@@ -316,14 +319,14 @@ const addSendMessageJob = async (run_id, project_id, target_channel_id, session_
     project_id,
     session_id,  // Include session_id for locking
     session_string: session.session_string,
-    chat_id: channel.chat_id,
+    chat_id: chat_id,  // Use username as chat_id
     type: message.message_type,
     file_path,
     caption: caption,  // Use the caption we prepared (from text file or original)
     ...options
   };
   
-  console.log(`[Queue] Adding job for channel ${channel.chat_id}, message type: ${message.message_type}`);
+  console.log(`[Queue] Adding job for channel ${chat_id}, message type: ${message.message_type}`);
   
   // Use job_index from options to create sequential delays
   const jobDelay = options.job_index 

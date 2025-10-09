@@ -25,6 +25,12 @@ function Projects() {
   const [previewFile, setPreviewFile] = useState(null);
   const [previewContent, setPreviewContent] = useState('');
   
+  // Log modal
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [logTarget, setLogTarget] = useState(null);
+  const [logs, setLogs] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  
   // Data for dropdowns
   const [sessions, setSessions] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -537,6 +543,42 @@ function Projects() {
     }
   };
 
+  const handleShowLogs = async (project) => {
+    setLogTarget(project);
+    setShowLogModal(true);
+    setLogsLoading(true);
+    
+    try {
+      const response = await axios.get(`/api/projects/${project.id}/logs?limit=200`);
+      if (response.data.success) {
+        setLogs(response.data.data);
+      } else {
+        setError('Failed to fetch logs: ' + response.data.error);
+      }
+    } catch (error) {
+      setError('Error fetching logs: ' + error.message);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  const closeLogModal = () => {
+    setShowLogModal(false);
+    setLogTarget(null);
+    setLogs([]);
+  };
+
+  const formatLogLevel = (level) => {
+    const levelColors = {
+      'info': 'text-info',
+      'error': 'text-danger',
+      'warning': 'text-warning',
+      'success': 'text-success',
+      'debug': 'text-muted'
+    };
+    return levelColors[level?.toLowerCase()] || 'text-dark';
+  };
+
   const openDeleteModal = (project) => {
     setDeleteTarget(project);
     setError('');
@@ -663,6 +705,15 @@ function Projects() {
                   onClick={() => handleShowModal(project)}
                 >
                   Edit
+                </Button>
+                <Button 
+                  variant="outline-info" 
+                  size="sm"
+                  className="me-2"
+                  onClick={() => handleShowLogs(project)}
+                  title="View project logs"
+                >
+                  📋 Logs
                 </Button>
                 <Button 
                   variant="outline-danger" 
@@ -1047,6 +1098,74 @@ function Projects() {
             onClick={() => window.open(`/api/files/${previewFile?.id}`, '_blank')}
           >
             📥 Download
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Log Modal */}
+      <Modal show={showLogModal} onHide={closeLogModal} size="xl">
+        <Modal.Header closeButton>
+          <Modal.Title>
+            📋 Project Logs - {logTarget?.name}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+          {logsLoading ? (
+            <div className="text-center">
+              <div className="spinner-border" role="status">
+                <span className="visually-hidden">Loading logs...</span>
+              </div>
+              <p className="mt-2">Loading logs...</p>
+            </div>
+          ) : logs.length === 0 ? (
+            <div className="text-center text-muted">
+              <p>No logs found for this project.</p>
+              <small>Logs will appear here when the project is run.</small>
+            </div>
+          ) : (
+            <div>
+              <div className="mb-3">
+                <small className="text-muted">
+                  Showing {logs.length} most recent log entries
+                </small>
+              </div>
+              <div className="log-container" style={{ fontFamily: 'monospace', fontSize: '0.9em' }}>
+                {logs.map((log, index) => (
+                  <div key={index} className="border-bottom py-2">
+                    <div className="d-flex justify-content-between align-items-start">
+                      <div className="flex-grow-1">
+                        <span className={`fw-bold ${formatLogLevel(log.level)}`}>
+                          [{log.level?.toUpperCase() || 'INFO'}]
+                        </span>
+                        <span className="ms-2">{log.message}</span>
+                        {log.meta && (
+                          <div className="mt-1">
+                            <small className="text-muted">
+                              Meta: {typeof log.meta === 'string' ? log.meta : JSON.stringify(log.meta)}
+                            </small>
+                          </div>
+                        )}
+                      </div>
+                      <small className="text-muted ms-3" style={{ minWidth: '140px', textAlign: 'right' }}>
+                        {new Date(log.created_at).toLocaleString()}
+                      </small>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={closeLogModal}>
+            Close
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={() => handleShowLogs(logTarget)}
+            disabled={logsLoading}
+          >
+            🔄 Refresh Logs
           </Button>
         </Modal.Footer>
       </Modal>

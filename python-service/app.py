@@ -4,12 +4,10 @@ Use this if FastAPI has compatibility issues with Python 3.12
 """
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from pyrogram import Client
-from pyrogram.types import Message
+from pyrogram import Client, errors
 import asyncio
 import hashlib
 import logging
-from datetime import datetime
 
 # Configure logging
 logging.basicConfig(
@@ -258,21 +256,28 @@ def send_message():
             message_id_to_comment = None
             comment_found = False
             
-            # Check for duplicate comments
-            async for message in client.get_chat_history(chat_id=chat_id, limit=30):
-                try:
-                    async for comment in client.get_discussion_replies(chat_id=chat_id, message_id=message.id, limit=10):
-                        comment_text = comment.text if comment.text else comment.caption
-                        if comment_text and reply_text:
-                            if reply_text.strip().lower() in comment_text.strip().lower():
-                                comment_found = True
-                                break
+            # Check for duplicate comments - following standard approach
+            try:
+                async for message in client.get_chat_history(chat_id=chat_id, limit=30):
+                    try:
+                        async for comment in client.get_discussion_replies(chat_id=chat_id, message_id=message.id, limit=10):
+                            comment_text = comment.text if comment.text else comment.caption
+                            if comment_text and reply_text:
+                                if reply_text.strip().lower() in comment_text.strip().lower():
+                                    comment_found = True
+                                    break
+                    except errors.exceptions.bad_request_400.MsgIdInvalid:
+                        continue
                     
                     if not comment_found:
                         message_id_to_comment = message.id
                         break
-                except:
-                    continue
+            except errors.exceptions.bad_request_400.UsernameNotOccupied:
+                await client.stop()
+                return {
+                    "success": False,
+                    "error": "Username not occupied or channel not found"
+                }
             
             if comment_found:
                 await client.stop()

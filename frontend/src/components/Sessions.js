@@ -286,6 +286,32 @@ function Sessions() {
     }
   };
 
+  const handleDownloadSession = async (sessionId) => {
+    try {
+      const response = await axios.get(`/api/sessions/${sessionId}/download`);
+      if (response.data.success) {
+        const { filename, content } = response.data.data;
+        
+        // Create blob and download
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        setSuccess(`Session data downloaded as ${filename}`);
+      } else {
+        setError(response.data.error || 'Failed to download session data');
+      }
+    } catch (err) {
+      setError('Error downloading session data: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
 
   const handleTestSession = async (session_id) => {
     try {
@@ -382,6 +408,15 @@ function Sessions() {
                   title="Refresh session data from Telegram"
                 >
                   Update
+                </Button>
+                <Button 
+                  variant="outline-primary" 
+                  size="sm" 
+                  className="me-2"
+                  onClick={() => handleDownloadSession(session.id)}
+                  title="Download complete session data as text file"
+                >
+                  Download
                 </Button>
                 <Button 
                   variant="outline-danger" 
