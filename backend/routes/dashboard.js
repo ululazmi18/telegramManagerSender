@@ -118,12 +118,12 @@ router.get('/running-projects', (req, res) => {
       p.status,
       p.created_at,
       pr.id as run_id,
-      pr.started_at,
+      pr.created_at as started_at,
       pr.stats
     FROM projects p
     LEFT JOIN process_runs pr ON pr.project_id = p.id AND pr.status = 'running'
     WHERE p.status = 'running'
-    ORDER BY pr.started_at DESC
+    ORDER BY pr.created_at DESC
   `;
   
   db.all(sql, [], (err, rows) => {
@@ -150,13 +150,13 @@ router.get('/recent-runs', (req, res) => {
       pr.id,
       pr.project_id,
       pr.status,
-      pr.started_at,
+      pr.created_at as started_at,
       pr.updated_at,
       pr.stats,
       p.name as project_name
     FROM process_runs pr
     JOIN projects p ON p.id = pr.project_id
-    ORDER BY pr.started_at DESC
+    ORDER BY pr.created_at DESC
     LIMIT ?
   `;
   

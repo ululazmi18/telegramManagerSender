@@ -64,11 +64,14 @@ router.post('/:id/sessions', (req, res) => {
 router.get('/:id/sessions', (req, res) => {
   const { id } = req.params; // project id
   
+  console.log('[Project Sessions] Getting sessions for project:', id);
   const sql = 'SELECT * FROM project_sessions WHERE project_id = ?';
   db.all(sql, [id], (err, rows) => {
     if (err) {
+      console.error('[Project Sessions] Error getting sessions:', err.message);
       return res.status(500).json({ success: false, error: err.message });
     }
+    console.log('[Project Sessions] Found sessions:', rows.length, rows);
     res.json({ success: true, data: rows });
   });
 });
@@ -86,6 +89,19 @@ router.delete('/:id/sessions/:session_id', (req, res) => {
       return res.status(404).json({ success: false, error: 'Session not found for this project' });
     }
     res.json({ success: true, message: 'Session removed from project successfully' });
+  });
+});
+
+// DELETE /api/projects/:id/sessions - remove all sessions from project
+router.delete('/:id/sessions', (req, res) => {
+  const { id } = req.params; // project id
+  
+  const sql = 'DELETE FROM project_sessions WHERE project_id = ?';
+  db.run(sql, [id], function(err) {
+    if (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+    res.json({ success: true, message: `Project sessions cleared successfully` });
   });
 });
 

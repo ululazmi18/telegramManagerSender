@@ -72,6 +72,33 @@ router.post('/', (req, res) => {
   });
 });
 
+// GET /api/categories/:id - get single category
+router.get('/:id', (req, res) => {
+  const { id } = req.params;
+  
+  const sql = `
+    SELECT 
+      c.id, 
+      c.name, 
+      c.created_at,
+      COUNT(cc.channel_id) as channel_count
+    FROM categories c
+    LEFT JOIN category_channels cc ON c.id = cc.category_id
+    WHERE c.id = ?
+    GROUP BY c.id, c.name, c.created_at
+  `;
+  
+  db.get(sql, [id], (err, row) => {
+    if (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+    if (!row) {
+      return res.status(404).json({ success: false, error: 'Category not found' });
+    }
+    res.json({ success: true, data: row });
+  });
+});
+
 // GET /api/categories/:id/channels - get channels in category
 router.get('/:id/channels', (req, res) => {
   const { id } = req.params;

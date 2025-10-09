@@ -133,6 +133,54 @@ router.get('/:id', (req, res) => {
   });
 });
 
+// PUT /api/channels/:id - update channel (chat_id and name)
+router.put('/:id', (req, res) => {
+  const { id } = req.params;
+  const { chat_id, name, username } = req.body;
+  
+  // Build dynamic update query based on provided fields
+  const updates = [];
+  const values = [];
+  
+  if (chat_id !== undefined) {
+    updates.push('chat_id = ?');
+    values.push(chat_id);
+  }
+  if (name !== undefined) {
+    updates.push('name = ?');
+    values.push(name);
+  }
+  if (username !== undefined) {
+    updates.push('username = ?');
+    values.push(username);
+  }
+  
+  if (updates.length === 0) {
+    return res.status(400).json({ success: false, error: 'No fields to update' });
+  }
+  
+  values.push(id); // Add id for WHERE clause
+  
+  const sql = `UPDATE channels SET ${updates.join(', ')} WHERE id = ?`;
+  db.run(sql, values, function(err) {
+    if (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ success: false, error: 'Channel not found' });
+    }
+    
+    // Fetch updated channel
+    const selectSql = 'SELECT id, username, chat_id, name FROM channels WHERE id = ?';
+    db.get(selectSql, [id], (selectErr, row) => {
+      if (selectErr) {
+        return res.status(500).json({ success: false, error: selectErr.message });
+      }
+      res.json({ success: true, data: row });
+    });
+  });
+});
+
 // DELETE /api/channels/:id - delete channel
 router.delete('/:id', (req, res) => {
   const { id } = req.params;

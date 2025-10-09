@@ -87,4 +87,17 @@ router.delete('/:id/targets/:target_id', (req, res) => {
   });
 });
 
+// DELETE /api/projects/:id/targets - remove all targets from project
+router.delete('/:id/targets', (req, res) => {
+  const { id } = req.params; // project id
+  
+  const sql = 'DELETE FROM project_targets WHERE project_id = ?';
+  db.run(sql, [id], function(err) {
+    if (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+    res.json({ success: true, message: `Project targets cleared successfully` });
+  });
+});
+
 module.exports = router;

@@ -54,28 +54,33 @@ def health_check():
 
 @app.route('/export_session', methods=['POST'])
 def export_session():
-    """Export session string for a given phone number"""
+    """Export session string for a given phone number - Standard approach"""
     data = request.json
     api_id = data.get("api_id")
     api_hash = data.get("api_hash")
     phone_number = data.get("phone_number")
     
+    if not all([api_id, api_hash, phone_number]):
+        return jsonify({"success": False, "error": "api_id, api_hash, and phone_number are required"}), 400
+    
     try:
         async def _export():
-            session_name = f"temp_{hashlib.md5(phone_number.encode()).hexdigest()}"
-            client = Client(session_name, api_id=api_id, api_hash=api_hash)
+            # Use in_memory=True for temporary session like in standard
+            client = Client('temp_session', api_id=api_id, api_hash=api_hash, in_memory=True)
             await client.connect()
             sent_code = await client.send_code(phone_number)
             await client.disconnect()
             
+            # Create session ID for tracking
             session_id = f"auth_{hashlib.md5((phone_number + str(sent_code.phone_code_hash)).encode()).hexdigest()}"
             authentication_sessions[session_id] = {
                 "api_id": api_id,
                 "api_hash": api_hash,
-                "session_name": session_name,
                 "phone_number": phone_number,
                 "phone_code_hash": sent_code.phone_code_hash
             }
+            
+            logger.info(f"Code sent to {phone_number}, session_id: {session_id}")
             
             return {
                 "success": True,
@@ -87,71 +92,92 @@ def export_session():
         result = run_async(_export())
         return jsonify(result)
     except Exception as e:
+        logger.error(f"Error in export_session: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 400
 
 @app.route('/complete_auth', methods=['POST'])
 def complete_auth():
-    """Complete the authentication process with the code received"""
+    """Complete the authentication process with the code received - Standard approach"""
     data = request.json
     session_id = data.get("session_id")
     phone_code = data.get("phone_code")
     password = data.get("password")
     
-    logger.info(f"Complete auth request - session_id: {session_id}, has_code: {bool(phone_code)}, code_length: {len(phone_code) if phone_code else 0}")
-    logger.info(f"Active sessions: {list(authentication_sessions.keys())}")
+    if not all([session_id, phone_code]):
+        return jsonify({"success": False, "error": "session_id and phone_code are required"}), 400
+    
+    logger.info(f"Complete auth request - session_id: {session_id}")
     
     if session_id not in authentication_sessions:
         logger.error(f"Invalid session ID: {session_id}")
         return jsonify({"success": False, "error": "Invalid session ID"}), 400
     
     auth_session = authentication_sessions[session_id]
-    logger.info(f"Auth session data - phone: {auth_session['phone_number']}, has_hash: {bool(auth_session.get('phone_code_hash'))}")
     
     try:
         async def _complete():
-            # Create new client with saved session data
-            logger.info(f"Creating client with session_name: {auth_session['session_name']}")
+            # Use in_memory=True like in standard approach
             client = Client(
-                auth_session["session_name"],
+                'temp_auth_session',
                 api_id=auth_session["api_id"],
-                api_hash=auth_session["api_hash"]
+                api_hash=auth_session["api_hash"],
+                in_memory=True
             )
             await client.connect()
-            logger.info("Client connected, attempting sign_in")
             
             try:
-                await client.sign_in(auth_session["phone_number"], auth_session["phone_code_hash"], phone_code)
+                # Standard sign_in approach
+                await client.sign_in(
+                    phone_number=auth_session["phone_number"],
+                    phone_code_hash=auth_session["phone_code_hash"],
+                    phone_code=phone_code
+                )
                 logger.info("Sign in successful")
             except Exception as e:
                 from pyrogram import errors
                 if isinstance(e, errors.SessionPasswordNeeded):
                     if not password:
                         await client.disconnect()
-                        raise Exception("PASSWORD_REQUIRED")
+                        return {"success": False, "error": "PASSWORD_REQUIRED", "requires_password": True}
                     try:
                         await client.check_password(password)
-                    except:
+                        logger.info("Password verification successful")
+                    except errors.BadRequest:
                         await client.disconnect()
-                        raise Exception("BAD_PASSWORD")
+                        return {"success": False, "error": "BAD_PASSWORD"}
+                elif isinstance(e, errors.PhoneCodeInvalid):
+                    await client.disconnect()
+                    return {"success": False, "error": "PHONE_CODE_INVALID"}
+                elif isinstance(e, errors.PhoneCodeExpired):
+                    await client.disconnect()
+                    return {"success": False, "error": "PHONE_CODE_EXPIRED"}
                 else:
                     await client.disconnect()
                     raise e
             
+            # Export session string like in standard
             session_string = await client.export_session_string()
+            
+            # Get user info like in standard
+            me = await client.get_me()
+            
             await client.disconnect()
             
-            # Clean up session files
-            import os
-            session_file = f"{auth_session['session_name']}.session"
-            if os.path.exists(session_file):
-                os.remove(session_file)
-            journal_file = f"{session_file}-journal"
-            if os.path.exists(journal_file):
-                os.remove(journal_file)
-            
+            # Clean up session from memory
             del authentication_sessions[session_id]
             
-            return {"success": True, "session_string": session_string}
+            return {
+                "success": True,
+                "session_string": session_string,
+                "user_info": {
+                    "id": me.id,
+                    "first_name": me.first_name,
+                    "last_name": me.last_name,
+                    "username": me.username,
+                    "phone_number": me.phone_number,
+                    "is_premium": me.is_premium
+                }
+            }
         
         result = run_async(_complete())
         return jsonify(result)
@@ -159,17 +185,54 @@ def complete_auth():
         error_msg = str(e)
         logger.error(f"Complete auth error: {error_msg}")
         
-        # Parse Telegram errors for better user messages
-        if "PHONE_CODE_EXPIRED" in error_msg:
-            error_msg = "Verification code has expired. Please request a new code."
-        elif "PHONE_CODE_INVALID" in error_msg:
-            error_msg = "Invalid verification code. Please check and try again."
-        elif "PASSWORD_REQUIRED" in error_msg:
-            error_msg = "Two-factor authentication is enabled. Please enter your password."
-        elif "BAD_PASSWORD" in error_msg:
-            error_msg = "Incorrect password. Please try again."
+        # Clean up session on error
+        if session_id in authentication_sessions:
+            del authentication_sessions[session_id]
         
         return jsonify({"success": False, "error": error_msg}), 400
+
+@app.route('/validate_session', methods=['POST'])
+def validate_session():
+    """Validate an existing session string - Standard approach"""
+    data = request.json
+    session_string = data.get("session_string")
+    
+    if not session_string:
+        return jsonify({"success": False, "error": "session_string is required"}), 400
+    
+    try:
+        async def _validate():
+            # Use session string like in updated standard approach
+            client = Client('validation_session', session_string=session_string)
+            await client.start()
+            
+            # Get user info like in standard
+            me = await client.get_me()
+            
+            await client.stop()
+            
+            return {
+                "success": True,
+                "valid": True,
+                "user_info": {
+                    "id": me.id,
+                    "first_name": me.first_name,
+                    "last_name": me.last_name,
+                    "username": me.username,
+                    "phone_number": me.phone_number,
+                    "is_premium": me.is_premium
+                }
+            }
+        
+        result = run_async(_validate())
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Session validation error: {str(e)}")
+        return jsonify({
+            "success": True,
+            "valid": False,
+            "error": str(e)
+        }), 200
 
 @app.route('/send_message', methods=['POST'])
 def send_message():
@@ -256,21 +319,26 @@ def send_message():
         logger.error(f"Error: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/get_me', methods=['GET'])
+@app.route('/get_me', methods=['POST'])
 def get_me():
-    """Get information about the current user"""
-    session_string = request.args.get("session_string")
+    """Get information about the current user - Standard approach"""
+    data = request.json
+    session_string = data.get("session_string")
+    
+    if not session_string:
+        return jsonify({"success": False, "error": "session_string is required"}), 400
     
     try:
         async def _get_me():
-            client = Client("temp_client", session_string=session_string)
+            # Use updated standard approach with start/stop
+            client = Client("user_info_session", session_string=session_string)
             await client.start()
             me = await client.get_me()
             await client.stop()
             
             return {
                 "success": True,
-                "data": {
+                "user_info": {
                     "id": me.id,
                     "first_name": me.first_name,
                     "last_name": me.last_name,
@@ -283,6 +351,7 @@ def get_me():
         result = run_async(_get_me())
         return jsonify(result)
     except Exception as e:
+        logger.error(f"Get user info error: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":

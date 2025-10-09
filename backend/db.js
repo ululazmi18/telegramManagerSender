@@ -60,14 +60,30 @@ class SqlJsWrapper {
           params = [];
         }
         
-        // sql.js uses exec() for all queries
-        this.db.exec(sql, params);
+        // sql.js uses prepare() and bind() for parameterized queries
+        if (params && params.length > 0) {
+          const stmt = this.db.prepare(sql);
+          stmt.bind(params);
+          stmt.step();
+          stmt.free();
+          console.log('DB run with params completed');
+        } else {
+          const result = this.db.exec(sql);
+          console.log('DB exec result:', result);
+        }
+        
+        // Force save to file immediately
         this.saveToFile();
-        if (callback) callback(null);
+        
+        // Add small delay to ensure file write completes
+        setTimeout(() => {
+          if (callback) callback(null);
+        }, 10);
       } catch (err) {
         // Ignore "no such table" errors during initialization
-        if (!err.message.includes('no such table')) {
-          console.error('DB run error:', err.message);
+        const errorMessage = err.message || err.toString() || 'Unknown error';
+        if (!errorMessage.includes('no such table')) {
+          console.error('DB run error:', errorMessage);
         }
         if (callback) callback(err);
       }
@@ -89,7 +105,18 @@ class SqlJsWrapper {
           callback = params;
           params = [];
         }
-        const result = this.db.exec(sql, params);
+        
+        let result;
+        if (params && params.length > 0) {
+          const stmt = this.db.prepare(sql);
+          result = stmt.getAsObject(params);
+          stmt.free();
+          if (callback) callback(null, result);
+          return;
+        } else {
+          result = this.db.exec(sql);
+        }
+        
         if (result.length > 0 && result[0].values.length > 0) {
           const columns = result[0].columns;
           const values = result[0].values[0];
@@ -102,7 +129,8 @@ class SqlJsWrapper {
           if (callback) callback(null, null);
         }
       } catch (err) {
-        console.error('DB get error:', err.message);
+        const errorMessage = err.message || err.toString() || 'Unknown error';
+        console.error('DB get error:', errorMessage);
         if (callback) callback(err, null);
       }
     }).catch(err => {
@@ -117,7 +145,24 @@ class SqlJsWrapper {
           callback = params;
           params = [];
         }
-        const result = this.db.exec(sql, params);
+        
+        console.log('DB all query:', sql, 'params:', params);
+        let result;
+        if (params && params.length > 0) {
+          const stmt = this.db.prepare(sql);
+          stmt.bind(params);
+          const rows = [];
+          while (stmt.step()) {
+            rows.push(stmt.getAsObject());
+          }
+          stmt.free();
+          console.log('DB all result (parameterized):', rows.length, 'rows');
+          if (callback) callback(null, rows);
+          return;
+        } else {
+          result = this.db.exec(sql);
+        }
+        
         if (result.length > 0) {
           const columns = result[0].columns;
           const rows = result[0].values.map(values => {
@@ -132,7 +177,8 @@ class SqlJsWrapper {
           if (callback) callback(null, []);
         }
       } catch (err) {
-        console.error('DB all error:', err.message);
+        const errorMessage = err.message || err.toString() || 'Unknown error';
+        console.error('DB all error:', errorMessage);
         if (callback) callback(err, []);
       }
     }).catch(err => {

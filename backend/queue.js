@@ -280,8 +280,12 @@ const addSendMessageJob = async (run_id, project_id, target_channel_id, session_
     });
   });
   
-  if (!channel || !channel.chat_id) {
-    throw new Error(`Channel not found or has no chat_id for target_channel_id: ${target_channel_id}`);
+  if (!channel) {
+    throw new Error(`Channel not found for target_channel_id: ${target_channel_id}`);
+  }
+  
+  if (!channel.chat_id) {
+    throw new Error(`Channel ${channel.username || channel.id} has no chat_id. Please update the channel with a valid chat_id to send messages.`);
   }
   
   // Get session details

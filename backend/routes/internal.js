@@ -72,10 +72,10 @@ router.get('/pyrogram/get_chat_history', async (req, res) => {
   }
 });
 
-// GET /internal/pyrogram/get_me
-router.get('/pyrogram/get_me', async (req, res) => {
+// POST /internal/pyrogram/get_me
+router.post('/pyrogram/get_me', async (req, res) => {
   try {
-    const response = await axios.get(`${PYTHON_SERVICE_URL}/get_me`, { params: req.query });
+    const response = await axios.post(`${PYTHON_SERVICE_URL}/get_me`, req.body);
     res.json(response.data);
   } catch (error) {
     console.error('Error calling Python get_me:', error.message);

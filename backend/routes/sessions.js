@@ -40,19 +40,19 @@ router.post('/register_string', async (req, res) => {
   }
   
   try {
-    // Call python service to register session with session_string
+    // Call python service to validate session string and get user info
     const pyRes = await axios.post(
-      `${process.env.PYTHON_SERVICE_URL || 'http://localhost:8000'}/register_session_string`,
-      { api_id, api_hash, session_string },
+      `${process.env.PYTHON_SERVICE_URL || 'http://localhost:8000'}/validate_session`,
+      { session_string },
       { headers: { 'x-internal-secret': process.env.INTERNAL_SECRET } }
     );
 
-    if (!pyRes.data?.success) {
-      return res.status(400).json({ success: false, error: 'Failed to register session' });
+    if (!pyRes.data?.success || !pyRes.data?.valid) {
+      return res.status(400).json({ success: false, error: pyRes.data?.error || 'Invalid session string' });
     }
 
-    const me = pyRes.data.data;
-    const exported_session_string = pyRes.data.session_string;
+    const me = pyRes.data.user_info;
+    const exported_session_string = session_string; // Use the provided session string
 
     const id = uuidv4();
     const name = `${me.first_name || ''} ${me.last_name || ''}`.trim() || me.username || 'Telegram User';
@@ -66,7 +66,12 @@ router.post('/register_string', async (req, res) => {
       return res.status(201).json({ success: true, data: { id, first_name: me.first_name, last_name: me.last_name, username: me.username } });
     });
   } catch (e) {
-    const msg = e.response?.data?.detail || e.message;
+    console.error('Error in register_string:', e.message);
+    if (e.response) {
+      console.error('Response data:', e.response.data);
+      console.error('Response status:', e.response.status);
+    }
+    const msg = e.response?.data?.error || e.response?.data?.detail || e.message;
     return res.status(400).json({ success: false, error: msg });
   }
 });
@@ -103,15 +108,8 @@ router.post('/phone/complete', async (req, res) => {
     }
 
     const session_string = pyRes.data.session_string;
-    // fetch user info to store
-    const meRes = await axios.get(
-      `${process.env.PYTHON_SERVICE_URL || 'http://localhost:8000'}/get_me`,
-      {
-        headers: { 'x-internal-secret': process.env.INTERNAL_SECRET },
-        params: { session_string }
-      }
-    );
-    const me = meRes.data?.data || {};
+    // The complete_auth endpoint now returns user_info directly
+    const me = pyRes.data.user_info || {};
 
     const id = uuidv4();
     const name = `${me.first_name || ''} ${me.last_name || ''}`.trim() || me.username || 'Telegram User';
@@ -165,19 +163,19 @@ router.put('/:id/update_data', async (req, res) => {
       }
       
       try {
-        // Call python service to get updated user info
+        // Call python service to validate session and get updated user info
         const pyRes = await axios.post(
-          `${process.env.PYTHON_SERVICE_URL || 'http://localhost:8000'}/register_session_string`,
-          { api_id, api_hash, session_string: session.session_string },
+          `${process.env.PYTHON_SERVICE_URL || 'http://localhost:8000'}/validate_session`,
+          { session_string: session.session_string },
           { headers: { 'x-internal-secret': process.env.INTERNAL_SECRET } }
         );
 
-        if (!pyRes.data?.success) {
-          return res.status(400).json({ success: false, error: 'Failed to update session data' });
+        if (!pyRes.data?.success || !pyRes.data?.valid) {
+          return res.status(400).json({ success: false, error: pyRes.data?.error || 'Invalid session string' });
         }
 
-        const me = pyRes.data.data;
-        const exported_session_string = pyRes.data.session_string;
+        const me = pyRes.data.user_info;
+        const exported_session_string = session.session_string; // Keep the original session string
 
         // Update session in database
         const name = `${me.first_name || ''} ${me.last_name || ''}`.trim() || me.username || 'Telegram User';
@@ -190,12 +188,18 @@ router.put('/:id/update_data', async (req, res) => {
           return res.json({ success: true, data: { id, first_name: me.first_name, last_name: me.last_name, username: me.username } });
         });
       } catch (e) {
-        const msg = e.response?.data?.detail || e.message;
+        console.error('Error in update_data:', e.message);
+        if (e.response) {
+          console.error('Response data:', e.response.data);
+          console.error('Response status:', e.response.status);
+        }
+        const msg = e.response?.data?.error || e.response?.data?.detail || e.message;
         return res.status(400).json({ success: false, error: msg });
       }
     });
   } catch (e) {
-    const msg = e.response?.data?.detail || e.message;
+    console.error('Error in update_data outer:', e.message);
+    const msg = e.response?.data?.error || e.response?.data?.detail || e.message;
     return res.status(400).json({ success: false, error: msg });
   }
 });

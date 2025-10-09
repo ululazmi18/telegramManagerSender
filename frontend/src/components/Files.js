@@ -16,7 +16,6 @@ function Files() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [showCreateTextModal, setShowCreateTextModal] = useState(false);
   const [newTextFilename, setNewTextFilename] = useState('');
   const [newTextContent, setNewTextContent] = useState('');
@@ -150,7 +149,6 @@ function Files() {
 
   const openDeleteModal = (file) => {
     setDeleteTarget(file);
-    setDeleteConfirmText('');
     setError('');
     setSuccess('');
     setShowDeleteModal(true);
@@ -159,15 +157,10 @@ function Files() {
   const closeDeleteModal = () => {
     setShowDeleteModal(false);
     setDeleteTarget(null);
-    setDeleteConfirmText('');
   };
 
-  const handleConfirmDelete = async () => {
+  const handleDeleteFile = async () => {
     if (!deleteTarget) return;
-    if (deleteConfirmText.trim().toLowerCase() !== 'deleted') {
-      setError('Type "deleted" to confirm deletion.');
-      return;
-    }
     try {
       await axios.delete(`/api/files/${deleteTarget.id}`);
       setSuccess(`File "${deleteTarget.filename}" deleted successfully.`);
@@ -406,25 +399,27 @@ function Files() {
         </Modal.Header>
         <Modal.Body>
           <p>
-            You are about to delete {deleteTarget ? <strong>{deleteTarget.filename}</strong> : ''}. This action cannot be undone.
+            Are you sure you want to delete file <strong>{deleteTarget ? deleteTarget.filename : ''}</strong>?
           </p>
-          <p>Type <code>deleted</code> to confirm:</p>
-          <Form.Control 
-            type="text" 
-            value={deleteConfirmText} 
-            onChange={(e) => setDeleteConfirmText(e.target.value)}
-            placeholder="deleted" 
-            autoFocus
-          />
+          {deleteTarget && (
+            <div className="mt-3">
+              <strong>File Details:</strong>
+              <ul className="mt-2">
+                <li><strong>Filename:</strong> {deleteTarget.filename}</li>
+                <li><strong>Type:</strong> {deleteTarget.file_type}</li>
+                <li><strong>Size:</strong> {(deleteTarget.size / 1024).toFixed(2)} KB</li>
+                <li><strong>Created:</strong> {new Date(deleteTarget.created_at).toLocaleString()}</li>
+              </ul>
+            </div>
+          )}
+          <p className="text-danger mt-3">
+            <strong>⚠️ This action cannot be undone.</strong>
+          </p>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={closeDeleteModal}>Cancel</Button>
-          <Button 
-            variant="danger" 
-            onClick={handleConfirmDelete}
-            disabled={deleteConfirmText.trim().toLowerCase() !== 'deleted'}
-          >
-            Delete
+          <Button variant="danger" onClick={handleDeleteFile}>
+            Delete File
           </Button>
         </Modal.Footer>
       </Modal>

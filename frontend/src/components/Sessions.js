@@ -27,7 +27,6 @@ function Sessions() {
   const [sessionString, setSessionString] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   useEffect(() => {
     fetchSessions();
@@ -111,9 +110,6 @@ function Sessions() {
   };
 
   const handleDeleteCredential = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this API credential?')) {
-      return;
-    }
     try {
       await axios.delete(`/api/credentials/${id}`);
       setSuccess('API credential deleted successfully');
@@ -217,9 +213,9 @@ function Sessions() {
     }
   };
 
+
   const openDeleteModal = (session) => {
     setDeleteTarget(session);
-    setDeleteConfirmText('');
     setError('');
     setSuccess('');
     setShowDeleteModal(true);
@@ -228,15 +224,10 @@ function Sessions() {
   const closeDeleteModal = () => {
     setShowDeleteModal(false);
     setDeleteTarget(null);
-    setDeleteConfirmText('');
   };
 
-  const handleConfirmDelete = async () => {
+  const handleDeleteSession = async () => {
     if (!deleteTarget) return;
-    if (deleteConfirmText.trim().toLowerCase() !== 'deleted') {
-      setError('Type "deleted" to confirm deletion.');
-      return;
-    }
     try {
       await axios.delete(`/api/sessions/${deleteTarget.id}`);
       setSuccess(`Session "${deleteTarget.name || deleteTarget.first_name || 'Unknown'}" deleted successfully.`);
@@ -383,19 +374,12 @@ function Sessions() {
               <td>{formatDateTime(session.login_at)}</td>
               <td>
                 <Button 
-                  variant="outline-primary" 
-                  size="sm" 
-                  className="me-2"
-                  onClick={() => handleShowModal()}
-                >
-                  Edit
-                </Button>
-                <Button 
                   variant="outline-success" 
                   size="sm" 
                   className="me-2"
                   onClick={() => handleUpdateSession(session.id)}
                   disabled={!activeCredential}
+                  title="Refresh session data from Telegram"
                 >
                   Update
                 </Button>
@@ -632,28 +616,32 @@ function Sessions() {
         </Modal.Header>
         <Modal.Body>
           <p>
-            You are about to delete session {deleteTarget ? <strong>{deleteTarget.name || deleteTarget.first_name || 'Unknown'}</strong> : ''}. This action cannot be undone.
+            Are you sure you want to delete session <strong>{deleteTarget ? deleteTarget.name || deleteTarget.first_name || 'Unknown' : ''}</strong>?
           </p>
-          <p>Type <code>deleted</code> to confirm:</p>
-          <Form.Control 
-            type="text" 
-            value={deleteConfirmText} 
-            onChange={(e) => setDeleteConfirmText(e.target.value)}
-            placeholder="deleted" 
-            autoFocus
-          />
+          {deleteTarget && (
+            <div className="mt-3">
+              <strong>Session Details:</strong>
+              <ul className="mt-2">
+                <li><strong>Name:</strong> {deleteTarget.name || 'N/A'}</li>
+                <li><strong>Username:</strong> {deleteTarget.username || 'N/A'}</li>
+                <li><strong>Phone:</strong> {deleteTarget.phone_number || 'N/A'}</li>
+                <li><strong>First Name:</strong> {deleteTarget.first_name || 'N/A'}</li>
+                <li><strong>Last Name:</strong> {deleteTarget.last_name || 'N/A'}</li>
+              </ul>
+            </div>
+          )}
+          <p className="text-danger mt-3">
+            <strong>⚠️ This action cannot be undone.</strong>
+          </p>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={closeDeleteModal}>Cancel</Button>
-          <Button 
-            variant="danger" 
-            onClick={handleConfirmDelete}
-            disabled={deleteConfirmText.trim().toLowerCase() !== 'deleted'}
-          >
-            Delete
+          <Button variant="danger" onClick={handleDeleteSession}>
+            Delete Session
           </Button>
         </Modal.Footer>
       </Modal>
+
     </Container>
   );
 }

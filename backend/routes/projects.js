@@ -6,6 +6,7 @@ const router = express.Router();
 
 // POST /api/projects - create project config
 router.post('/', (req, res) => {
+  console.log('Creating project with data:', req.body);
   const { name, description, owner, config } = req.body;
   const id = uuidv4();
   
@@ -14,7 +15,7 @@ router.post('/', (req, res) => {
   }
   
   const sql = 'INSERT INTO projects (id, name, description, owner, config, status) VALUES (?, ?, ?, ?, ?, ?)';
-  db.run(sql, [id, name, description, owner, JSON.stringify(config || {}), 'stopped'], function(err) {
+  db.run(sql, [id, name, description || '', owner || '', JSON.stringify(config || {}), 'stopped'], function(err) {
     if (err) {
       return res.status(500).json({ success: false, error: err.message });
     }
@@ -68,7 +69,7 @@ router.put('/:id', (req, res) => {
   }
   
   const sql = 'UPDATE projects SET name = ?, description = ?, owner = ?, config = ?, updated_at = datetime("now") WHERE id = ?';
-  db.run(sql, [name, description, owner, JSON.stringify(config || {}), id], function(err) {
+  db.run(sql, [name, description || '', owner || '', JSON.stringify(config || {}), id], function(err) {
     if (err) {
       return res.status(500).json({ success: false, error: err.message });
     }
@@ -92,6 +93,8 @@ router.put('/:id', (req, res) => {
 router.post('/:id/run', async (req, res) => {
   const { id } = req.params;
   const { started_by, delay_settings, selection_mode } = req.body;
+  
+  console.log('[Project Run] Starting project:', id, 'by:', started_by);
   
   // Check if project exists
   const checkSql = 'SELECT id, status FROM projects WHERE id = ?';
@@ -119,25 +122,31 @@ router.post('/:id/run', async (req, res) => {
         }
         
         // Get project targets (channels)
-        const targetsSql = 'SELECT channel_id FROM project_targets WHERE project_id = ?';
-        db.all(targetsSql, [id], async (targetsErr, targets) => {
+        const targetsSql = 'SELECT * FROM project_targets WHERE project_id = ?';
+        db.all(targetsSql, [id], (targetsErr, targets) => {
           if (targetsErr) {
             return res.status(500).json({ success: false, error: targetsErr.message });
           }
           
+          console.log('[Project Run] Found targets:', targets.length, targets);
+          
           // Get project sessions
-          const sessionsSql = 'SELECT session_id FROM project_sessions WHERE project_id = ?';
-          db.all(sessionsSql, [id], async (sessionsErr, sessions) => {
+          const sessionsSql = 'SELECT * FROM project_sessions WHERE project_id = ?';
+          db.all(sessionsSql, [id], (sessionsErr, sessions) => {
             if (sessionsErr) {
               return res.status(500).json({ success: false, error: sessionsErr.message });
             }
             
+            console.log('[Project Run] Found sessions:', sessions.length, sessions);
+            
             // Get project messages
-            const messagesSql = 'SELECT id, message_type FROM project_messages WHERE project_id = ?';
+            const messagesSql = 'SELECT * FROM project_messages WHERE project_id = ?';
             db.all(messagesSql, [id], async (messagesErr, messages) => {
               if (messagesErr) {
                 return res.status(500).json({ success: false, error: messagesErr.message });
               }
+              
+              console.log('[Project Run] Found messages:', messages.length, messages);
               
               // New logic: 1 session, sequential per channel
               let jobCount = 0;

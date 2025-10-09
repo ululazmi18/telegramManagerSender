@@ -81,11 +81,14 @@ router.post('/:id/messages', (req, res) => {
 router.get('/:id/messages', (req, res) => {
   const { id } = req.params; // project id
   
+  console.log('[Project Messages] Getting messages for project:', id);
   const sql = 'SELECT * FROM project_messages WHERE project_id = ?';
   db.all(sql, [id], (err, rows) => {
     if (err) {
+      console.error('[Project Messages] Error getting messages:', err.message);
       return res.status(500).json({ success: false, error: err.message });
     }
+    console.log('[Project Messages] Found messages:', rows.length, rows);
     res.json({ success: true, data: rows });
   });
 });
@@ -103,6 +106,19 @@ router.delete('/:id/messages/:message_id', (req, res) => {
       return res.status(404).json({ success: false, error: 'Message not found for this project' });
     }
     res.json({ success: true, message: 'Message removed from project successfully' });
+  });
+});
+
+// DELETE /api/projects/:id/messages - remove all messages from project
+router.delete('/:id/messages', (req, res) => {
+  const { id } = req.params; // project id
+  
+  const sql = 'DELETE FROM project_messages WHERE project_id = ?';
+  db.run(sql, [id], function(err) {
+    if (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+    res.json({ success: true, message: `Project messages cleared successfully` });
   });
 });
 

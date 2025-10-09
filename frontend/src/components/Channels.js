@@ -20,6 +20,12 @@ function Channels() {
   const [categoryLoading, setCategoryLoading] = useState(true);
   const [categorySearch, setCategorySearch] = useState('');
   
+  // Delete confirmation state
+  const [showDeleteChannelModal, setShowDeleteChannelModal] = useState(false);
+  const [showDeleteCategoryModal, setShowDeleteCategoryModal] = useState(false);
+  const [deleteChannelTarget, setDeleteChannelTarget] = useState(null);
+  const [deleteCategoryTarget, setDeleteCategoryTarget] = useState(null);
+  
   // Category modal state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
@@ -33,6 +39,12 @@ function Channels() {
   // Add channel modal state
   const [showAddChannelModal, setShowAddChannelModal] = useState(false);
   const [addChannelType, setAddChannelType] = useState('single'); // 'single', 'multiple', 'file'
+  
+  // Edit channel modal state
+  const [showEditChannelModal, setShowEditChannelModal] = useState(false);
+  const [editingChannel, setEditingChannel] = useState(null);
+  const [editChatId, setEditChatId] = useState('');
+  const [editChannelName, setEditChannelName] = useState('');
 
   useEffect(() => {
     fetchChannels();
@@ -166,15 +178,25 @@ function Channels() {
     }
   };
 
-  const handleDeleteChannel = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this channel?')) {
-      return;
-    }
-    
+  const openDeleteChannelModal = (channel) => {
+    setDeleteChannelTarget(channel);
+    setError('');
+    setSuccess('');
+    setShowDeleteChannelModal(true);
+  };
+
+  const closeDeleteChannelModal = () => {
+    setShowDeleteChannelModal(false);
+    setDeleteChannelTarget(null);
+  };
+
+  const handleDeleteChannel = async () => {
+    if (!deleteChannelTarget) return;
     try {
-      const response = await axios.delete(`/api/channels/${id}`);
+      const response = await axios.delete(`/api/channels/${deleteChannelTarget.id}`);
       if (response.data.success) {
         setSuccess('Channel deleted successfully');
+        closeDeleteChannelModal();
         fetchChannels();
         fetchCategories();
       }
@@ -239,15 +261,25 @@ function Channels() {
     }
   };
 
-  const handleDeleteCategory = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this category?')) {
-      return;
-    }
-    
+  const openDeleteCategoryModal = (category) => {
+    setDeleteCategoryTarget(category);
+    setError('');
+    setSuccess('');
+    setShowDeleteCategoryModal(true);
+  };
+
+  const closeDeleteCategoryModal = () => {
+    setShowDeleteCategoryModal(false);
+    setDeleteCategoryTarget(null);
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!deleteCategoryTarget) return;
     try {
-      const response = await axios.delete(`/api/categories/${id}`);
+      const response = await axios.delete(`/api/categories/${deleteCategoryTarget.id}`);
       if (response.data.success) {
         setSuccess('Category deleted successfully');
+        closeDeleteCategoryModal();
         fetchCategories();
       }
     } catch (error) {
@@ -283,6 +315,41 @@ function Channels() {
     setBulkUsernames('');
     setSelectedFile(null);
   };
+  
+  const handleEditChannel = (channel) => {
+    setEditingChannel(channel);
+    setEditChatId(channel.chat_id || '');
+    setEditChannelName(channel.name || '');
+    setShowEditChannelModal(true);
+  };
+  
+  const handleCloseEditChannelModal = () => {
+    setShowEditChannelModal(false);
+    setEditingChannel(null);
+    setEditChatId('');
+    setEditChannelName('');
+  };
+  
+  const handleSaveChannelEdit = async (e) => {
+    e.preventDefault();
+    
+    if (!editingChannel) return;
+    
+    try {
+      const response = await axios.put(`/api/channels/${editingChannel.id}`, {
+        chat_id: editChatId.trim() || null,
+        name: editChannelName.trim() || null
+      });
+      
+      if (response.data.success) {
+        setSuccess(`Channel "${editingChannel.username}" updated successfully`);
+        handleCloseEditChannelModal();
+        fetchChannels();
+      }
+    } catch (error) {
+      setError('Error updating channel: ' + (error.response?.data?.error || error.message));
+    }
+  }
 
   if (loading || categoryLoading) return <Container><p>Loading...</p></Container>;
 
@@ -319,6 +386,8 @@ function Channels() {
               <tr>
                 <th>ID</th>
                 <th>Username</th>
+                <th>Chat ID</th>
+                <th>Name</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -337,10 +406,26 @@ function Channels() {
                   <td>{channel.id.substring(0, 8)}...</td>
                   <td>{channel.username}</td>
                   <td>
+                    {channel.chat_id ? (
+                      <span className="text-success">{channel.chat_id}</span>
+                    ) : (
+                      <Badge bg="warning" text="dark">Not Set</Badge>
+                    )}
+                  </td>
+                  <td>{channel.name || <span className="text-muted">-</span>}</td>
+                  <td>
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      className="me-1"
+                      onClick={() => handleEditChannel(channel)}
+                    >
+                      Edit
+                    </Button>
                     <Button
                       variant="outline-danger"
                       size="sm"
-                      onClick={() => handleDeleteChannel(channel.id)}
+                      onClick={() => openDeleteChannelModal(channel)}
                     >
                       Delete
                     </Button>
@@ -408,7 +493,7 @@ function Channels() {
                     <Button
                       variant="outline-danger"
                       size="sm"
-                      onClick={() => handleDeleteCategory(category.id)}
+                      onClick={() => openDeleteCategoryModal(category)}
                     >
                       Delete
                     </Button>
@@ -618,6 +703,118 @@ function Channels() {
             </Button>
           </div>
         </Modal.Footer>
+      </Modal>
+
+      {/* Delete Channel Confirmation Modal */}
+      <Modal show={showDeleteChannelModal} onHide={closeDeleteChannelModal}>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirm Delete Channel</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>
+            Are you sure you want to delete channel <strong>{deleteChannelTarget ? deleteChannelTarget.username : ''}</strong>?
+          </p>
+          {deleteChannelTarget && (
+            <div className="mt-3">
+              <strong>Channel Details:</strong>
+              <ul className="mt-2">
+                <li><strong>ID:</strong> {deleteChannelTarget.id}</li>
+                <li><strong>Username:</strong> {deleteChannelTarget.username}</li>
+                <li><strong>Chat ID:</strong> {deleteChannelTarget.chat_id || 'Not set'}</li>
+                <li><strong>Name:</strong> {deleteChannelTarget.name || 'Not set'}</li>
+              </ul>
+            </div>
+          )}
+          <p className="text-danger mt-3">
+            <strong>⚠️ This action cannot be undone.</strong>
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={closeDeleteChannelModal}>Cancel</Button>
+          <Button variant="danger" onClick={handleDeleteChannel}>
+            Delete Channel
+          </Button>
+        </Modal.Footer>
+      </Modal>
+      
+      {/* Delete Category Modal */}
+      <Modal show={showDeleteCategoryModal} onHide={closeDeleteCategoryModal}>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirm Delete</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Are you sure you want to delete this category?</p>
+          {deleteCategoryTarget && (
+            <div>
+              <strong>Category:</strong> {deleteCategoryTarget.name}
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={closeDeleteCategoryModal}>Cancel</Button>
+          <Button variant="danger" onClick={handleDeleteCategory}>Delete</Button>
+        </Modal.Footer>
+      </Modal>
+      
+      {/* Edit Channel Modal */}
+      <Modal show={showEditChannelModal} onHide={handleCloseEditChannelModal}>
+        <Modal.Header closeButton>
+          <Modal.Title>Edit Channel</Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleSaveChannelEdit}>
+          <Modal.Body>
+            {editingChannel && (
+              <>
+                <Form.Group className="mb-3">
+                  <Form.Label>Username</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={editingChannel.username}
+                    disabled
+                    readOnly
+                  />
+                  <Form.Text className="text-muted">
+                    Username cannot be changed
+                  </Form.Text>
+                </Form.Group>
+                
+                <Form.Group className="mb-3">
+                  <Form.Label>Chat ID</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="e.g., -1001234567890"
+                    value={editChatId}
+                    onChange={(e) => setEditChatId(e.target.value)}
+                  />
+                  <Form.Text className="text-muted">
+                    Required for sending messages. Get this from Telegram or @username_to_id_bot
+                  </Form.Text>
+                </Form.Group>
+                
+                <Form.Group className="mb-3">
+                  <Form.Label>Channel Name (Optional)</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="Enter channel display name"
+                    value={editChannelName}
+                    onChange={(e) => setEditChannelName(e.target.value)}
+                  />
+                  <Form.Text className="text-muted">
+                    Friendly name for this channel
+                  </Form.Text>
+                </Form.Group>
+              </>
+            )}
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={handleCloseEditChannelModal}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit">
+              Save Changes
+            </Button>
+          </Modal.Footer>
+        </Form>
       </Modal>
     </Container>
   );

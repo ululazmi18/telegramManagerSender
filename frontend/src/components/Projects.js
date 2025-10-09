@@ -14,7 +14,6 @@ function Projects() {
   const [search, setSearch] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
   
   // Run confirmation modal
   const [showRunModal, setShowRunModal] = useState(false);
@@ -111,11 +110,17 @@ function Projects() {
     }
   };
 
-  const handleShowModal = (project = null) => {
+  const handleShowModal = async (project = null) => {
     if (project) {
+      // Edit mode - ensure we have latest data
+      await fetchProjects(false); // Refresh projects list first
+      
+      // Find the latest version of this project
+      const latestProject = projects.find(p => p.id === project.id) || project;
+      
       // Edit mode - load existing project data
-      setCurrentProject(project); // Set project first to get status
-      loadProjectData(project.id);
+      setCurrentProject(latestProject); // Set project first to get status
+      loadProjectData(latestProject.id);
     } else {
       // Add mode - reset form
       setCurrentProject({ name: '', description: '' });
@@ -213,150 +218,118 @@ function Projects() {
       return;
     }
     if (!selectedTextFile && !selectedMediaFile) {
-      setError('Please select at least one file (text or media)');
+      setError('⚠️ Please select at least one file (text or media) to create messages for the project');
       return;
     }
     
     try {
+      let projectId;
+      
       if (currentProject.id) {
         // Update existing project
         await updateProject(currentProject.id);
+        projectId = currentProject.id;
       } else {
         // Create new project
         const response = await axios.post('/api/projects', currentProject);
         if (response.data.success) {
-          const projectId = response.data.data.id;
-          
-          // Determine which session to use
-          let sessionToUse = selectedSession;
-          if (sessionSelectionMode === 'random') {
-            // Pick random session from available sessions
-            if (sessions.length > 0) {
-              const randomIndex = Math.floor(Math.random() * sessions.length);
-              sessionToUse = sessions[randomIndex].id;
-            } else {
-              setError('No sessions available');
-              return;
-            }
-          }
-          
-          // Add selected/random session to project
-          await axios.post('/api/project-sessions', {
-            project_id: projectId,
-            session_ids: [sessionToUse],
-            selection_mode: sessionSelectionMode
-          });
-          
-          // Add channels from selected category to project
-          const categoryResponse = await axios.get(`/api/categories/${selectedCategory}/channels`);
-          if (categoryResponse.data.success) {
-            const channelIds = categoryResponse.data.data.map(c => c.id);
-            if (channelIds.length > 0) {
-              await axios.post('/api/project-targets', {
-                project_id: projectId,
-                channel_ids: channelIds
-              });
-            }
-          }
-          
-          // Add selected files to project as messages
-          const fileIds = [];
-          if (selectedTextFile) fileIds.push(selectedTextFile);
-          if (selectedMediaFile) fileIds.push(selectedMediaFile);
-          
-          console.log('[Frontend] Adding messages for files:', fileIds);
-          
-          if (fileIds.length === 0) {
-            console.warn('[Frontend] No files selected! Project will have no messages.');
-          }
-          
-          for (const fileId of fileIds) {
-            console.log('[Frontend] Adding message for file:', fileId);
-            const msgResponse = await axios.post('/api/project-messages', {
-              project_id: projectId,
-              file_id: fileId
-            });
-            console.log('[Frontend] Message added:', msgResponse.data);
-          }
-          
-          setSuccess(`Project created successfully with ${fileIds.length} message(s)`);
+          projectId = response.data.data.id;
+          setSuccess(`Project created successfully`);
+        } else {
+          setError('Failed to create project');
+          return;
         }
       }
       
-      fetchProjects();
+      // Configure project with sessions, targets, and messages (for both create and update)
+      await configureProject(projectId);
+      
+      // Force refresh with loading indicator to ensure data sync
+      await fetchProjects(true);
+      
+      // Also refresh other related data
+      await fetchSessions();
+      await fetchCategories();
+      await fetchFiles();
+      
       handleCloseModal();
     } catch (error) {
       setError('Error saving project: ' + error.message);
     }
   };
 
-  const updateProject = async (projectId) => {
-    // Update project basic info
-    await axios.put(`/api/projects/${projectId}`, {
-      name: currentProject.name,
-      description: currentProject.description
+  const configureProject = async (projectId) => {
+    console.log('[Frontend] Configuring project:', projectId);
+    console.log('[Frontend] Current state:', {
+      selectedSession,
+      sessionSelectionMode,
+      selectedCategory,
+      selectedTextFile,
+      selectedMediaFile
     });
-
-    // Delete old sessions and add new one
-    const oldSessionsResponse = await axios.get(`/api/projects/${projectId}/sessions`);
-    if (oldSessionsResponse.data.success) {
-      for (const sess of oldSessionsResponse.data.data) {
-        await axios.delete(`/api/projects/${projectId}/sessions/${sess.session_id}`);
-      }
+    
+    // Clear existing project configuration first
+    try {
+      await axios.delete(`/api/projects/${projectId}/sessions`);
+      await axios.delete(`/api/projects/${projectId}/targets`);
+      await axios.delete(`/api/projects/${projectId}/messages`);
+    } catch (error) {
+      console.log('[Frontend] Note: Some cleanup operations failed (may be expected for new projects)');
     }
-
-    // Add new session
+    
+    // Determine which session to use
     let sessionToUse = selectedSession;
-    if (sessionSelectionMode === 'random' && !selectedSession) {
+    if (sessionSelectionMode === 'random') {
+      // Pick random session from available sessions
       if (sessions.length > 0) {
         const randomIndex = Math.floor(Math.random() * sessions.length);
         sessionToUse = sessions[randomIndex].id;
+      } else {
+        throw new Error('No sessions available');
       }
     }
-    await axios.post(`/api/projects/${projectId}/sessions`, {
-      session_id: sessionToUse,
+    
+    // Add selected/random session to project
+    await axios.post('/api/project-sessions', {
+      project_id: projectId,
+      session_ids: [sessionToUse],
       selection_mode: sessionSelectionMode
     });
-
-    // Delete old targets and add new ones from category
-    const oldTargetsResponse = await axios.get(`/api/projects/${projectId}/targets`);
-    if (oldTargetsResponse.data.success) {
-      for (const target of oldTargetsResponse.data.data) {
-        await axios.delete(`/api/projects/${projectId}/targets/${target.id}`);
-      }
-    }
-
-    // Add new targets from selected category
+    console.log('[Frontend] Session configured:', sessionToUse);
+    
+    // Add channels from selected category to project
+    console.log('[Frontend] Getting channels for category:', selectedCategory);
     const categoryResponse = await axios.get(`/api/categories/${selectedCategory}/channels`);
+    console.log('[Frontend] Category response:', categoryResponse.data);
+    
     if (categoryResponse.data.success) {
       const channelIds = categoryResponse.data.data.map(c => c.id);
+      console.log('[Frontend] Channel IDs:', channelIds);
+      
       if (channelIds.length > 0) {
-        for (const channelId of channelIds) {
-          await axios.post(`/api/projects/${projectId}/targets`, {
-            channel_id: channelId,
-            priority: 0
-          });
-        }
+        console.log('[Frontend] Adding targets to project...');
+        const targetsResponse = await axios.post('/api/project-targets', {
+          project_id: projectId,
+          channel_ids: channelIds
+        });
+        console.log('[Frontend] Targets response:', targetsResponse.data);
+        console.log('[Frontend] Targets configured:', channelIds.length, 'channels');
+      } else {
+        console.warn('[Frontend] No channels found in category');
       }
+    } else {
+      console.error('[Frontend] Failed to get category channels:', categoryResponse.data);
     }
-
-    // Delete old messages and add new ones
-    const oldMessagesResponse = await axios.get(`/api/projects/${projectId}/messages`);
-    if (oldMessagesResponse.data.success) {
-      for (const msg of oldMessagesResponse.data.data) {
-        await axios.delete(`/api/projects/${projectId}/messages/${msg.id}`);
-      }
-    }
-
-    // Add new messages
+    
+    // Add selected files to project as messages
     const fileIds = [];
     if (selectedTextFile) fileIds.push(selectedTextFile);
     if (selectedMediaFile) fileIds.push(selectedMediaFile);
     
-    console.log('[Frontend] Updating messages for files:', fileIds);
+    console.log('[Frontend] Adding messages for files:', fileIds);
     
     if (fileIds.length === 0) {
-      console.warn('[Frontend] No files selected during update! Project will have no messages.');
+      console.warn('[Frontend] No files selected! Project will have no messages.');
     }
     
     for (const fileId of fileIds) {
@@ -367,8 +340,19 @@ function Projects() {
       });
       console.log('[Frontend] Message added:', msgResponse.data);
     }
+    
+    const isUpdate = currentProject.id ? true : false;
+    const action = isUpdate ? 'updated' : 'created';
+    setSuccess(`Project ${action} successfully with ${fileIds.length} message(s), ${sessionToUse ? 1 : 0} session(s)`);
+  };
 
-    setSuccess(`Project updated successfully with ${fileIds.length} message(s)`);
+  const updateProject = async (projectId) => {
+    // Update project basic info only
+    await axios.put(`/api/projects/${projectId}`, {
+      name: currentProject.name,
+      description: currentProject.description
+    });
+    console.log('[Frontend] Project basic info updated');
   };
 
   const fetchRunDetails = async (projectId) => {
@@ -446,8 +430,14 @@ function Projects() {
   const handleRunClick = async (project) => {
     console.log('🚀 Preparing to run project:', project.id);
     
-    // Fetch project details
-    const details = await fetchRunDetails(project.id);
+    // Ensure we have latest project data
+    await fetchProjects(false);
+    
+    // Find the latest version of this project
+    const latestProject = projects.find(p => p.id === project.id) || project;
+    
+    // Fetch project details with latest data
+    const details = await fetchRunDetails(latestProject.id);
     if (!details) {
       setError('Failed to load project details');
       return;
@@ -509,7 +499,9 @@ function Projects() {
         const runId = response.data.data?.run_id || 'unknown';
         setSuccess(`✅ Project started successfully! ${jobsCreated} jobs created. Run ID: ${runId}`);
         console.log('✅ Success! Jobs created:', jobsCreated);
-        fetchProjects();
+        
+        // Force refresh to show updated status
+        await fetchProjects(true);
       } else {
         const errorMsg = response.data.error || 'Unknown error';
         setError('❌ Failed to start project: ' + errorMsg);
@@ -537,7 +529,9 @@ function Projects() {
     try {
       await axios.post(`/api/projects/${id}/stop`);
       setSuccess('Project stopped successfully');
-      fetchProjects();
+      
+      // Force refresh to show updated status
+      await fetchProjects(true);
     } catch (error) {
       setError('Error stopping project: ' + error.message);
     }
@@ -545,7 +539,6 @@ function Projects() {
 
   const openDeleteModal = (project) => {
     setDeleteTarget(project);
-    setDeleteConfirmText('');
     setError('');
     setSuccess('');
     setShowDeleteModal(true);
@@ -554,15 +547,10 @@ function Projects() {
   const closeDeleteModal = () => {
     setShowDeleteModal(false);
     setDeleteTarget(null);
-    setDeleteConfirmText('');
   };
 
-  const handleConfirmDelete = async () => {
+  const handleDeleteProject = async () => {
     if (!deleteTarget) return;
-    if (deleteConfirmText.trim().toLowerCase() !== 'deleted') {
-      setError('Type "deleted" to confirm deletion.');
-      return;
-    }
     try {
       await axios.delete(`/api/projects/${deleteTarget.id}`);
       setSuccess(`Project "${deleteTarget.name}" deleted successfully.`);
@@ -848,25 +836,27 @@ function Projects() {
         </Modal.Header>
         <Modal.Body>
           <p>
-            You are about to delete project <strong>{deleteTarget ? deleteTarget.name : ''}</strong>. This action cannot be undone.
+            Are you sure you want to delete project <strong>{deleteTarget ? deleteTarget.name : ''}</strong>?
           </p>
-          <p>Type <code>deleted</code> to confirm:</p>
-          <Form.Control 
-            type="text" 
-            value={deleteConfirmText} 
-            onChange={(e) => setDeleteConfirmText(e.target.value)}
-            placeholder="deleted" 
-            autoFocus
-          />
+          {deleteTarget && (
+            <div className="mt-3">
+              <strong>Project Details:</strong>
+              <ul className="mt-2">
+                <li><strong>Name:</strong> {deleteTarget.name}</li>
+                <li><strong>Description:</strong> {deleteTarget.description || 'No description'}</li>
+                <li><strong>Status:</strong> <span className={`badge ${deleteTarget.status === 'running' ? 'bg-success' : 'bg-secondary'}`}>{deleteTarget.status}</span></li>
+                <li><strong>Created:</strong> {new Date(deleteTarget.created_at).toLocaleString()}</li>
+              </ul>
+            </div>
+          )}
+          <p className="text-danger mt-3">
+            <strong>⚠️ This action cannot be undone. All project data including sessions, targets, and messages will be permanently deleted.</strong>
+          </p>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={closeDeleteModal}>Cancel</Button>
-          <Button 
-            variant="danger" 
-            onClick={handleConfirmDelete}
-            disabled={deleteConfirmText.trim().toLowerCase() !== 'deleted'}
-          >
-            Delete
+          <Button variant="danger" onClick={handleDeleteProject}>
+            Delete Project
           </Button>
         </Modal.Footer>
       </Modal>
